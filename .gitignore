@@ -53,3 +53,13 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Private planning and research notes (local only)
+docs/
+
+# Hatari harness run folders
+tools/runs/
+
+# Build outputs and harness scratch
+out/
+tools/__pycache__/

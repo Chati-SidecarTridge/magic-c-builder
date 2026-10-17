@@ -1,0 +1,2373 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MagiC ROM Builder · SidecarTridge</title>
+<link rel="canonical" href="https://magic.sidecartridge.com/">
+<meta name="description" content="Build a MagiC 6.30 ROM image for the Atari ST, STE and Mega STE that boots in place of TOS, plus its boot floppy or hard disk files. For the SidecarTridge TOS Emulator and Hatari.">
+<style>
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0b0f17;
+  color: #e5e7eb;
+  padding: 20px;
+}
+
+#app {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+#browserWarning {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto 16px;
+}
+
+.top-banner {
+  width: 100%;
+  max-width: 1080px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(15, 18, 28, 0.12);
+  border-radius: 16px;
+  background: rgba(245, 246, 250, 0.92);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(6px);
+  margin: 0 auto 16px;
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #11131a;
+  text-decoration: none;
+}
+
+.brand-link img {
+  display: block;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+}
+
+.brand-wordmark {
+  height: 24px;
+  width: auto;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #1b2435;
+  text-decoration: none;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(27, 33, 48, 0.22);
+  background: rgba(229, 233, 244, 0.85);
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.back-link:hover {
+  border-color: rgba(27, 33, 48, 0.42);
+  background: rgba(255, 255, 255, 0.95);
+  color: #0b0f18;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(15, 18, 28, 0.18);
+}
+
+button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  background: #f97316;
+  font-weight: 600;
+  color: #0b0f17;
+}
+
+button:disabled {
+  opacity: .5;
+}
+
+.steps {
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  background: #0f172a;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.step-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.step-header span {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.step-content {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 12px;
+  color: #cbd5f5;
+  transition: max-height 0.25s ease, opacity 0.25s ease, padding 0.25s ease;
+}
+
+.step.active .step-content,
+.step.complete .step-content {
+  max-height: 1200px;
+  opacity: 1;
+  padding: 8px 12px 12px;
+}
+
+.step.complete .step-header {
+  color: #86efac;
+}
+
+pre {
+  background: #111827;
+  padding: 10px;
+  border-radius: 6px;
+  height: 420px;
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
+progress {
+  width: 100%;
+  height: 18px;
+  appearance: none;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+}
+
+progress::-webkit-progress-bar {
+  background: transparent;
+}
+
+progress::-webkit-progress-value {
+  background: #3b82f6;
+}
+
+progress::-moz-progress-bar {
+  background: #3b82f6;
+}
+
+.progress-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.progress-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e5e7eb;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+/* Drop zone (Step 1). */
+.drop-zone {
+  border: 2px dashed #334155;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  background: #0b1220;
+  color: #cbd5f5;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.drop-zone.drag-active {
+  border-color: #f97316;
+  background: #1e293b;
+}
+
+.drop-zone .browse-link {
+  color: #fde047;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* File list (Step 1). */
+.file-list {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.file-list th, .file-list td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #1f2937;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.file-list th {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.file-list td.actions button {
+  padding: 2px 8px;
+  font-size: 0.85rem;
+  background: #1f2937;
+  color: #f9fafb;
+  margin-right: 4px;
+}
+
+.file-list td.actions button.remove {
+  background: #7f1d1d;
+  color: #fecaca;
+}
+
+.file-list td input[type="text"], .file-list td select {
+  background: #0b1220;
+  color: #e5e7eb;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.file-list td.row-error {
+  color: #fca5a5;
+  font-size: 0.85rem;
+}
+
+/* Cart options form (Step 2). */
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.options-grid fieldset {
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 0;
+  background: #0b1220;
+}
+
+.options-grid fieldset legend {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  padding: 0 6px;
+}
+
+.options-grid label {
+  display: block;
+  margin: 4px 0;
+  color: #cbd5f5;
+  font-size: 0.9rem;
+}
+
+.options-grid input[type="text"], .options-grid select {
+  background: #0f172a;
+  color: #e5e7eb;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+/* Error banner used by Step 2 validation. */
+.error-banner {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #7f1d1d;
+  color: #fecaca;
+  font-size: 0.9rem;
+}
+
+/* Generic muted hint text. */
+.hint {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+/* Inline ? help icon. */
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid #94a3b8;
+  background: transparent;
+  color: #cbd5f5;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0;
+  margin: 0 0 0 6px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.help-icon:hover,
+.help-icon:focus-visible {
+  border-color: #fde047;
+  color: #fde047;
+  outline: none;
+}
+
+/* Help modal dialog. <dialog> defaults need overriding because the
+   browser inserts margin / padding / border that don't match the rest
+   of the dark theme. */
+dialog#helpModal {
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 0;
+  background: #0f172a;
+  color: #e5e7eb;
+  max-width: 640px;
+  width: calc(100% - 32px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+dialog#helpModal::backdrop {
+  background: rgba(8, 11, 20, 0.7);
+  backdrop-filter: blur(2px);
+}
+
+.modal-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #e5e7eb;
+  font-size: 1.05rem;
+}
+
+.modal-close {
+  background: transparent;
+  color: #94a3b8;
+  font-size: 1.2rem;
+  padding: 0 6px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  color: #fde047;
+}
+
+.modal-body {
+  padding: 12px 16px 16px;
+  color: #cbd5f5;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.modal-body p {
+  margin: 0 0 10px;
+}
+
+.modal-body h4 {
+  margin: 14px 0 6px;
+  color: #e5e7eb;
+  font-size: 0.95rem;
+}
+
+.modal-body ul {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+
+.modal-body li {
+  margin-bottom: 4px;
+}
+
+.modal-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+
+.modal-body th,
+.modal-body td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid #1f2937;
+  vertical-align: top;
+}
+
+.modal-body th {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.modal-body code {
+  background: #0b1220;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+/* ----- build log ----- */
+
+.log {
+  background: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 12px 14px;
+  height: 480px;
+  overflow: auto;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+.log .lg-start {
+  color: #f8fafc;
+  font-weight: 600;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #1e293b;
+}
+.log .lg-step {
+  margin-top: 14px;
+  padding: 4px 0;
+  color: #fde047;
+  font-weight: 600;
+  border-top: 1px dashed #1e293b;
+}
+.log .lg-step:first-of-type { border-top: none; }
+.log .lg-n {
+  display: inline-block;
+  min-width: 1.8em;
+  margin-right: 8px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: #f97316;
+  color: #111827;
+  text-align: center;
+}
+.log .lg-time {
+  display: inline-block;
+  min-width: 7.5em;
+  margin-right: 10px;
+  color: #67e8f9;
+  font-weight: 400;
+  opacity: 0.85;
+}
+.log .lg-say { margin: 3px 0 3px 2ch; }
+.log .lg-item {
+  margin: 2px 0 2px 4ch;
+  padding-left: 2ch;
+  text-indent: -2ch;
+}
+.log .lg-bullet { color: #f97316; margin-right: 1ch; }
+.log .lg-info { color: #94a3b8; }
+.log .lg-ok { color: #4ade80; font-weight: 600; margin-top: 10px; }
+.log .lg-error { color: #f87171; font-weight: 600; }
+.log .lg-hex { color: #fdba74; }
+.log .lg-file { color: #86efac; }
+.log .lg-str { color: #f9a8d4; }
+.log .lg-num { color: #93c5fd; }
+.log .lg-table {
+  margin: 6px 0 8px 2ch;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.log .lg-table th {
+  color: #94a3b8;
+  font-weight: 500;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10.5px;
+  padding: 3px 12px;
+  border-bottom: 1px solid #334155;
+}
+.log .lg-table td {
+  padding: 2px 12px;
+  border-bottom: 1px solid #111c30;
+  vertical-align: top;
+}
+.log .lg-table tr:nth-child(even) td { background: #0f172a; }
+.log .lg-table .r { text-align: right; white-space: nowrap; }
+
+/* ----- credits footer ----- */
+
+.credits {
+  max-width: 1080px;
+  margin: 28px auto 0;
+  padding: 0 0 32px;
+}
+.credits-inner {
+  border-top: 1px solid #1f2937;
+  padding-top: 18px;
+}
+.credits h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: #f8fafc;
+}
+.credits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+.credits h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fde047;
+}
+.credits ul {
+  margin: 0;
+  padding-left: 16px;
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.credits li { margin-bottom: 6px; }
+.credits a { color: #fde047; }
+.credits code { font-size: 12px; }
+.credits-license {
+  margin-top: 14px;
+  color: #64748b;
+  font-size: 12.5px;
+}
+
+/* ----- about MagiC ----- */
+
+.about {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  margin: 14px 0 18px;
+}
+.about-card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-left: 3px solid #f97316;
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.about-card h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #fde047;
+}
+.about-card p { margin: 0 0 8px; }
+.about-card ul { margin: 0 0 8px; padding-left: 18px; }
+.about-card li { margin-bottom: 4px; }
+.about-card strong { color: #f8fafc; }
+.about-card .hint { margin-bottom: 0; }
+.credits-links { margin-left: 8px; white-space: nowrap; }
+</style>
+<script>
+window.addEventListener('error', function (e) {
+  var w = document.getElementById('browserWarning');
+  if (w) {
+    w.style.display = 'block';
+    w.textContent = 'The MagiC ROM Builder hit a startup error: ' + (e.message || 'unknown');
+  }
+});
+</script>
+<!-- Cookie banner and analytics, as on sidecartridge.com
+     (sidecartridge-website: _includes/framework/cookie-consent.html and
+     google-analytics.html). https://github.com/orestbida/cookieconsent v2.9.2,
+     MIT, inlined from src/vendor/. The privacy and contact links point at the
+     main site instead of placeholders.
+     Shared consent: cookieconsent writes cc_cookie with Domain=<cookie_domain>,
+     and its default is location.hostname, so sidecartridge.com's cookie already
+     covers every subdomain. This page sets cookie_domain to sidecartridge.com
+     too, so both read and write the same cookie; elsewhere (localhost, LAN)
+     it keeps the default. -->
+<style>
+:root{--cc-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";--cc-font-size:16px;--cc-bg:#fff;--cc-z-index:2147483647;--cc-text:#2d4156;--cc-border-radius:.45rem;--cc-btn-primary-bg:#2d4156;--cc-btn-primary-text:var(--cc-bg);--cc-btn-primary-hover-bg:#1d2e38;--cc-btn-primary-hover-text:var(--cc-btn-primary-text);--cc-btn-secondary-bg:#eaeff2;--cc-btn-secondary-text:var(--cc-text);--cc-btn-secondary-hover-bg:#d8e0e6;--cc-btn-secondary-hover-text:var(--cc-btn-secondary-text);--cc-btn-border-radius:0.375rem;--cc-toggle-bg-off:#919ea6;--cc-toggle-bg-on:var(--cc-btn-primary-bg);--cc-toggle-bg-readonly:#d5dee2;--cc-toggle-knob-bg:#fff;--cc-toggle-knob-icon-color:#ecf2fa;--cc-block-text:var(--cc-text);--cc-cookie-category-block-bg:#f0f4f7;--cc-cookie-category-block-bg-hover:#e9eff4;--cc-section-border:#f1f3f5;--cc-cookie-table-border:#e9edf2;--cc-overlay-bg:#040608;--cc-overlay-opacity:.85;--cc-consent-modal-box-shadow:0 0.625rem 1.875rem rgba(2,2,3,.28);--cc-webkit-scrollbar-bg:#cfd5db;--cc-webkit-scrollbar-bg-hover:#9199a0}.c_darkmode{--cc-bg:#181b1d;--cc-text:#d8e5ea;--cc-btn-primary-bg:#a6c4dd;--cc-btn-primary-text:#000;--cc-btn-primary-hover-bg:#c2dff7;--cc-btn-primary-hover-text:var(--cc-btn-primary-text);--cc-btn-secondary-bg:#33383c;--cc-btn-secondary-text:var(--cc-text);--cc-btn-secondary-hover-bg:#3e454a;--cc-btn-secondary-hover-text:var(--cc-btn-secondary-text);--cc-toggle-bg-off:#667481;--cc-toggle-bg-on:var(--cc-btn-primary-bg);--cc-toggle-bg-readonly:#454c54;--cc-toggle-knob-bg:var(--cc-cookie-category-block-bg);--cc-toggle-knob-icon-color:var(--cc-bg);--cc-block-text:#b3bfc5;--cc-cookie-category-block-bg:#23272a;--cc-cookie-category-block-bg-hover:#2b3035;--cc-section-border:#292d31;--cc-cookie-table-border:#2b3035;--cc-webkit-scrollbar-bg:#667481;--cc-webkit-scrollbar-bg-hover:#9199a0}#cc--main{z-index:2147483647;z-index:var(--cc-z-index)}.cc_div *,.cc_div :after,.cc_div :before,.cc_div :hover{animation:none;background:none;border:none;border-radius:unset;box-shadow:none;-webkit-box-sizing:border-box;box-sizing:border-box;color:inherit;float:none;font-family:inherit;font-size:1em;font-style:inherit;font-variant:normal;font-weight:inherit;height:auto;letter-spacing:unset;line-height:1.2;margin:0;padding:0;text-align:left;text-decoration:none;text-transform:none;transition:none;vertical-align:baseline;visibility:unset}.cc_div{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;color:#2d4156;color:var(--cc-text);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;font-family:var(--cc-font-family);font-size:16px;font-size:var(--cc-font-size);font-weight:400;text-rendering:optimizeLegibility}#c-ttl,#s-bl td:before,#s-ttl,.cc_div .b-tl,.cc_div .c-bn{font-weight:600}#cm,#s-bl .act .b-acc,#s-inr,.cc_div .b-tl,.cc_div .c-bl{border-radius:.45rem;border-radius:var(--cc-border-radius)}#s-bl .act .b-acc{border-top-left-radius:0;border-top-right-radius:0}.cc_div a,.cc_div button,.cc_div input{-webkit-appearance:none;-moz-appearance:none;appearance:none;overflow:hidden}.cc_div a{border-bottom:1px solid}.cc_div a:hover{border-color:transparent;text-decoration:none}.cc_div .c-bn>span{pointer-events:none}#cm-ov,#cs-ov,.c--anim #cm,.c--anim #s-cnt,.c--anim #s-inr{transition:visibility .25s linear,opacity .25s ease,transform .25s ease!important}.c--anim .c-bn{transition:background-color .25s ease!important}.c--anim #cm.bar.slide,.c--anim #cm.bar.slide+#cm-ov,.c--anim .bar.slide #s-inr,.c--anim .bar.slide+#cs-ov{transition:visibility .4s ease,opacity .4s ease,transform .4s ease!important}#cm.bar.slide,.cc_div .bar.slide #s-inr{opacity:1;transform:translateX(100%)}#cm.bar.top.slide,.cc_div .bar.left.slide #s-inr{opacity:1;transform:translateX(-100%)}#cm.slide,.cc_div .slide #s-inr{transform:translateY(1.6em)}#cm.top.slide{transform:translateY(-1.6em)}#cm.bar.slide{transform:translateY(100%)}#cm.bar.top.slide{transform:translateY(-100%)}.show--consent .c--anim #cm,.show--consent .c--anim #cm.bar,.show--settings .c--anim #s-inr,.show--settings .c--anim .bar.slide #s-inr{opacity:1;transform:scale(1);visibility:visible!important}.show--consent .c--anim #cm.box.middle,.show--consent .c--anim #cm.cloud.middle{transform:scale(1) translateY(-50%)}.show--settings .c--anim #s-cnt{visibility:visible!important}.force--consent.show--consent .c--anim #cm-ov,.show--settings .c--anim #cs-ov{opacity:.85!important;opacity:var(--cc-overlay-opacity)!important;visibility:visible!important}#cm{background:#fff;background:var(--cc-bg);bottom:1.25em;box-shadow:0 .625em 1.875em #000;box-shadow:0 .625rem 1.875rem rgba(2,2,3,.28);box-shadow:var(--cc-consent-modal-box-shadow);font-family:inherit;line-height:normal;max-width:24.2em;opacity:0;padding:1em 1.4em 1.3em;position:fixed;right:1.25em;transform:scale(.95);visibility:hidden;width:100%;z-index:1}#cc_div #cm{display:block!important}#c-ttl{font-size:1.05em;margin-bottom:.7em}.cloud #c-ttl{margin-top:-.15em}#c-txt{font-size:.9em;line-height:1.5em}.cc_div #c-bns{display:flex;justify-content:space-between;margin-top:1.4em}.cc_div .c-bn{background:#eaeff2;background:var(--cc-btn-secondary-bg);border-radius:.375rem;border-radius:var(--cc-btn-border-radius);color:#2d4156;color:var(--cc-btn-secondary-text);cursor:pointer;display:inline-block;flex:1;font-size:.82em;padding:1em 1.7em;text-align:center;-moz-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-o-user-select:none;user-select:none}#c-bns button+button,#s-c-bn,#s-cnt button+button{float:right;margin-left:.5rem}#s-cnt #s-rall-bn{float:none}#cm .c_link:active,#cm .c_link:hover,#s-c-bn:active,#s-c-bn:hover,#s-cnt button+button:active,#s-cnt button+button:hover{background:#d8e0e6;background:var(--cc-btn-secondary-hover-bg);color:#2d4156;color:var(--cc-btn-secondary-hover-text)}#s-cnt{display:table;height:100%;left:0;position:fixed;top:0;visibility:hidden;width:100%;z-index:101}#s-bl{outline:none;scrollbar-width:thin}#s-bl .title{margin-top:1.4em}#s-bl .b-bn,#s-bl .title:first-child{margin-top:0}#s-bl .b-acc .p{margin-top:0;padding:1em}#s-cnt .b-bn .b-tl{background:none;display:block;font-family:inherit;font-size:.95em;padding:1.3em 6.4em 1.3em 2.7em;position:relative;transition:background-color .25s ease;width:100%}#s-cnt .b-bn .b-tl.exp{cursor:pointer}#s-cnt .act .b-bn .b-tl{border-bottom-left-radius:0;border-bottom-right-radius:0}#s-cnt .b-bn .b-tl:active,#s-cnt .b-bn .b-tl:hover{background:#e9eff4;background:var(--cc-cookie-category-block-bg-hover)}#s-bl .b-bn{position:relative}#s-bl .c-bl{border:1px solid #f1f3f5;border:1px solid var(--cc-section-border);margin-bottom:.4rem;padding:1em;transition:background-color .25s ease}#s-bl .c-bl:hover{background:#f0f4f7;background:var(--cc-cookie-category-block-bg)}#s-bl .c-bl:last-child{margin-bottom:.5em}#s-bl .c-bl:first-child{border:none;margin-bottom:2em;margin-top:0;padding:0;transition:none}#s-bl .c-bl:not(.b-ex):first-child:hover{background:transparent;background:unset}#s-bl .c-bl.b-ex{background:#f0f4f7;background:var(--cc-cookie-category-block-bg);border:none;padding:0;transition:none}#s-bl .c-bl.b-ex+.c-bl{margin-top:2em}#s-bl .c-bl.b-ex+.c-bl.b-ex{margin-top:0}#s-bl .c-bl.b-ex:first-child{margin-bottom:1em;margin-bottom:.5em}#s-bl .b-acc{display:none;margin-bottom:0;max-height:0;overflow:hidden;padding-top:0}#s-bl .act .b-acc{display:block;max-height:100%;overflow:hidden}#s-cnt .p{color:#2d4156;color:var(--cc-block-text);font-size:.9em;line-height:1.5em;margin-top:.85em}.cc_div .b-tg .c-tgl:disabled{cursor:not-allowed}#c-vln{display:table-cell;position:relative;vertical-align:middle}#cs{bottom:0;left:0;padding:0 1.7em;position:fixed;right:0;top:0;width:100%}#cs,#s-inr{height:100%}#s-inr{box-shadow:0 13px 27px -5px rgba(3,6,9,.26);margin:0 auto;max-width:45em;opacity:0;overflow:hidden;padding-bottom:4.75em;padding-top:4.75em;position:relative;transform:scale(.96);visibility:hidden}#s-bns,#s-hdr,#s-inr{background:#fff;background:var(--cc-bg)}#s-bl{display:block;height:100%;overflow-x:hidden;overflow-y:auto;overflow-y:overlay;padding:1.3em 1.6em;width:100%}#s-bns{border-top:1px solid #f1f3f5;border-top:1px solid var(--cc-section-border);bottom:0;height:4.75em;left:0;padding:1em 1.8em;position:absolute;right:0}.cc_div .cc-link{border-bottom:1px solid #2d4156;border-bottom:1px solid var(--cc-btn-primary-bg);color:#2d4156;color:var(--cc-btn-primary-bg);cursor:pointer;display:inline;font-weight:600;padding-bottom:0;text-decoration:none}.cc_div .cc-link:active,.cc_div .cc-link:hover{border-color:transparent}#c-bns button:first-child,#s-bns button:first-child{background:#2d4156;background:var(--cc-btn-primary-bg);color:#fff;color:var(--cc-btn-primary-text)}#c-bns.swap button:first-child{background:#eaeff2;background:var(--cc-btn-secondary-bg);color:#2d4156;color:var(--cc-btn-secondary-text)}#c-bns.swap button:last-child{background:#2d4156;background:var(--cc-btn-primary-bg);color:#fff;color:var(--cc-btn-primary-text)}.cc_div .b-tg .c-tgl:checked~.c-tg{background:#2d4156;background:var(--cc-toggle-bg-on)}#c-bns button:first-child:active,#c-bns button:first-child:hover,#c-bns.swap button:last-child:active,#c-bns.swap button:last-child:hover,#s-bns button:first-child:active,#s-bns button:first-child:hover{background:#1d2e38;background:var(--cc-btn-primary-hover-bg);color:#fff;color:var(--cc-btn-primary-hover-text)}#c-bns.swap button:first-child:active,#c-bns.swap button:first-child:hover{background:#d8e0e6;background:var(--cc-btn-secondary-hover-bg);color:#2d4156;color:var(--cc-btn-secondary-hover-text)}#s-hdr{border-bottom:1px solid #f1f3f5;border-bottom:1px solid var(--cc-section-border);display:table;height:4.75em;padding:0 1.8em;position:absolute;top:0;width:100%;z-index:2}#s-hdr,#s-ttl{vertical-align:middle}#s-ttl{display:table-cell;font-size:1em}#s-c-bn{font-size:1.45em;font-weight:400;height:1.7em;margin:0;overflow:hidden;padding:0;position:relative;width:1.7em}#s-c-bnc{display:table-cell;vertical-align:middle}.cc_div span.t-lb{opacity:0;overflow:hidden;pointer-events:none;position:absolute;top:0;z-index:-1}#c_policy__text{height:31.25em;margin-top:1.25em;overflow-y:auto}#c-s-in{height:100%;height:calc(100% - 2.5em);max-height:37.5em;position:relative;top:50%;transform:translateY(-50%)}@media screen and (min-width:688px){#s-bl::-webkit-scrollbar{background:transparent;border-radius:0 .25em .25em 0;height:100%;width:.8em}#s-bl::-webkit-scrollbar-thumb{background:#cfd5db;background:var(--cc-webkit-scrollbar-bg);border:.25em solid #fff;border:.25em solid var(--cc-bg);border-radius:100em}#s-bl::-webkit-scrollbar-thumb:hover{background:#9199a0;background:var(--cc-webkit-scrollbar-bg-hover)}#s-bl::-webkit-scrollbar-button{height:5px;width:10px}}.cc_div .b-tg{bottom:0;display:inline-block;margin:auto;right:0;right:1.2em;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;vertical-align:middle}.cc_div .b-tg,.cc_div .b-tg .c-tgl{cursor:pointer;position:absolute;top:0}.cc_div .b-tg .c-tgl{border:0;display:block;left:0;margin:0}.cc_div .b-tg .c-tg{background:#919ea6;background:var(--cc-toggle-bg-off);pointer-events:none;position:absolute;transition:background-color .25s ease,box-shadow .25s ease}.cc_div .b-tg,.cc_div .b-tg .c-tg,.cc_div .b-tg .c-tgl,.cc_div span.t-lb{border-radius:4em;height:1.5em;width:3.4em}.cc_div .b-tg .c-tg.c-ro{cursor:not-allowed}.cc_div .b-tg .c-tgl~.c-tg.c-ro{background:#d5dee2;background:var(--cc-toggle-bg-readonly)}.cc_div .b-tg .c-tgl~.c-tg.c-ro:after{box-shadow:none}.cc_div .b-tg .c-tg:after{background:#fff;background:var(--cc-toggle-knob-bg);border:none;border-radius:100%;box-shadow:0 1px 2px rgba(24,32,35,.36);box-sizing:content-box;content:"";display:block;height:1.25em;left:.125em;position:relative;top:.125em;transition:transform .25s ease;width:1.25em}.cc_div .b-tg .c-tgl:checked~.c-tg:after{transform:translateX(1.9em)}#s-bl table,#s-bl td,#s-bl th{border:none}#s-bl tbody tr{transition:background-color .25s ease}#s-bl tbody tr:hover{background:#e9eff4;background:var(--cc-cookie-category-block-bg-hover)}#s-bl table{border-collapse:collapse;margin:0;overflow:hidden;padding:0;text-align:left;width:100%}#s-bl caption{border-bottom:1px solid #e9edf2;border-bottom:1px solid var(--cc-cookie-table-border);font-size:.9em;font-weight:600;padding:.5rem 1rem}#s-bl td,#s-bl th{font-size:.8em;padding:.8em .625em .8em 1.2em;text-align:left;vertical-align:top}#s-bl th{font-family:inherit;font-weight:600;padding:1em 1rem}#s-bl thead tr:first-child{border-bottom:1px solid #e9edf2;border-bottom:1px solid var(--cc-cookie-table-border)}.force--consent #cs,.force--consent #s-cnt{width:100vw}#cm-ov,#cs-ov{background:#070707;background:#040608;background:var(--cc-overlay-bg);bottom:0;display:none;left:0;opacity:0;position:fixed;right:0;top:0;transition:none;visibility:hidden}.c--anim #cs-ov,.force--consent .c--anim #cm-ov,.force--consent.show--consent #cm-ov,.show--settings #cs-ov{display:block}#cs-ov{z-index:2}.force--consent .cc_div{bottom:0;left:0;position:fixed;top:0;transition:visibility .25s linear;visibility:hidden;width:100%;width:100vw}.force--consent.show--consent .c--anim .cc_div,.force--consent.show--settings .c--anim .cc_div{visibility:visible}.force--consent #cm{position:absolute}.force--consent #cm.bar{max-width:100vw;width:100vw}html.force--consent.show--consent{overflow-y:hidden!important}html.force--consent.show--consent,html.force--consent.show--consent body{height:auto!important;overflow-x:hidden!important}.cc_div .act .b-bn .exp:before,.cc_div .b-bn .exp:before{border:solid #2d4156;border:solid var(--cc-btn-secondary-text);border-width:0 2px 2px 0;content:"";display:inline-block;left:1.2em;margin-right:15px;padding:.2em;position:absolute;top:50%;transform:translateY(-50%) rotate(45deg)}.cc_div .act .b-bn .b-tl:before{transform:translateY(-20%) rotate(225deg)}.cc_div .on-i:before{border:solid #ecf2fa;border:solid var(--cc-toggle-knob-icon-color);border-width:0 2px 2px 0;display:inline-block;left:.75em;padding:.1em .1em .45em;top:.37em}#s-c-bn:after,#s-c-bn:before,.cc_div .on-i:before{content:"";margin:0 auto;position:absolute;transform:rotate(45deg)}#s-c-bn:after,#s-c-bn:before{background:#2d4156;background:var(--cc-btn-secondary-text);border-radius:1em;height:.6em;left:.82em;top:.58em;width:1.5px}#s-c-bn:after{transform:rotate(-45deg)}.cc_div .off-i,.cc_div .on-i{display:block;height:100%;position:absolute;right:0;text-align:center;transition:opacity .15s ease;width:50%}.cc_div .on-i{left:0;opacity:0}.cc_div .off-i:after,.cc_div .off-i:before{background:#ecf2fa;background:var(--cc-toggle-knob-icon-color);content:" ";display:block;height:.7em;margin:0 auto;position:absolute;right:.8em;top:.42em;transform-origin:center;width:.09375em}.cc_div .off-i:before{transform:rotate(45deg)}.cc_div .off-i:after{transform:rotate(-45deg)}.cc_div .b-tg .c-tgl:checked~.c-tg .on-i{opacity:1}.cc_div .b-tg .c-tgl:checked~.c-tg .off-i{opacity:0}#cm.box.middle,#cm.cloud.middle{bottom:auto;top:50%;transform:translateY(-37%)}#cm.box.middle.zoom,#cm.cloud.middle.zoom{transform:scale(.95) translateY(-50%)}#cm.box.center,#cm.cloud{left:1em;margin:0 auto;right:1em}#cm.cloud{max-width:50em;overflow:hidden;padding:1.2em 1.7em;text-align:center;width:unset}.cc_div .cloud #c-inr{display:table;width:100%}.cc_div .cloud #c-inr-i{display:table-cell;padding-right:2.4em;vertical-align:top;width:70%}.cc_div .cloud #c-txt{font-size:.85em}.cc_div .cloud #c-bns{display:table-cell;min-width:170px;vertical-align:middle}#cm.cloud .c-bn{margin:.5rem 0 0;width:100%}#cm.cloud .c-bn:first-child{margin:0}#cm.cloud.left{margin-right:1.25em}#cm.cloud.right{margin-left:1.25em}#cm.bar{border-radius:0;bottom:0;left:0;max-width:100%;padding:2em;position:fixed;right:0;width:100%}#cm.bar #c-inr{margin:0 auto;max-width:32em}#cm.bar #c-bns{max-width:33.75em}#cm.bar #cs{padding:0}.cc_div .bar #c-s-in{height:100%;max-height:100%;top:0;transform:none}.cc_div .bar #s-bl,.cc_div .bar #s-bns,.cc_div .bar #s-hdr{padding-left:1.4em;padding-right:1.4em}.cc_div .bar #cs{padding:0}.cc_div .bar #s-inr{border-radius:0;margin:0 0 0 auto;max-width:32em}.cc_div .bar.left #s-inr{margin-left:0;margin-right:auto}.cc_div .bar #s-bl table,.cc_div .bar #s-bl tbody,.cc_div .bar #s-bl td,.cc_div .bar #s-bl th,.cc_div .bar #s-bl thead,.cc_div .bar #s-bl tr,.cc_div .bar #s-cnt{display:block}.cc_div .bar #s-bl caption{border-bottom:1px solid #e9edf2;border-bottom:1px solid var(--cc-cookie-table-border);border-top:0;display:block}.cc_div .bar #s-bl thead tr{left:-9999px;position:absolute;top:-9999px}.cc_div .bar #s-bl tr{border-top:1px solid #e9edf2;border-top:1px solid var(--cc-cookie-table-border)}.cc_div .bar #s-bl td{border:none;padding-left:35%;position:relative}.cc_div .bar #s-bl td:before{color:#2d4156;color:var(--cc-text);content:attr(data-column);left:1rem;overflow:hidden;padding-right:.625em;position:absolute;text-overflow:ellipsis;white-space:nowrap}#cm.top{bottom:auto;top:1.25em}#cm.left{left:1.25em;right:auto}#cm.right{left:auto;right:1.25em}#cm.bar.left,#cm.bar.right{left:0;right:0}#cm.bar.top{top:0}@media (prefers-reduced-motion){#cc--main #cm,#cc--main #s-cnt,#cc--main #s-inr{transition:none!important}}@media screen and (max-width:688px){#cm,#cm.cloud,#cm.left,#cm.right{bottom:1em;display:block;left:1em;margin:0;max-width:100%;padding:1.2em!important;right:1em;width:auto}.force--consent #cm,.force--consent #cm.cloud{max-width:100vw;width:auto}#cm.top{bottom:auto;top:1em}#cm.bottom{bottom:1em;top:auto}#cm.bar.bottom{bottom:0}#cm.cloud .c-bn{font-size:.85em}#s-bns,.cc_div .bar #s-bns{padding:1em 1.3em}.cc_div .bar #s-inr{max-width:100%;width:100%}.cc_div .cloud #c-inr-i{padding-right:0}#cs{border-radius:0;padding:0}#c-s-in{height:100%;max-height:100%;top:0;transform:none}.cc_div .b-tg{right:1.1em;transform:scale(1.1)}#s-inr{border-radius:0;margin:0;padding-bottom:7.9em}#s-bns{height:7.9em}#s-bl,.cc_div .bar #s-bl{padding:1.2em}#s-hdr,.cc_div .bar #s-hdr{padding:0 1.2em}#s-bl table{width:100%}#s-inr.bns-t{padding-bottom:10.5em}.bns-t #s-bns{height:10.5em}.cc_div .bns-t .c-bn{font-size:.83em;padding:.9em 1.6em}#s-cnt .b-bn .b-tl{padding-bottom:1.2em;padding-top:1.2em}#s-bl table,#s-bl tbody,#s-bl td,#s-bl th,#s-bl thead,#s-bl tr,#s-cnt{display:block}#s-bl caption{border-bottom:0;display:block}#s-bl thead tr{left:-9999px;position:absolute;top:-9999px}#s-bl tr{border-top:1px solid #e9edf2;border-top:1px solid var(--cc-cookie-table-border)}#s-bl td{border:none;padding-left:35%;position:relative}#s-bl td:before{color:#2d4156;color:var(--cc-text);content:attr(data-column);left:1rem;overflow:hidden;padding-right:.625em;position:absolute;text-overflow:ellipsis;white-space:nowrap}#cm .c-bn,.cc_div .c-bn{margin-right:0;width:100%}#s-cnt #s-rall-bn{margin-left:0}.cc_div #c-bns{flex-direction:column}#c-bns button+button,#s-cnt button+button{float:unset;margin-left:0;margin-top:.625em}#cm.box,#cm.cloud{left:1em;right:1em;width:auto}#cm.cloud.left,#cm.cloud.right{margin:0}.cc_div .cloud #c-bns,.cc_div .cloud #c-inr,.cc_div .cloud #c-inr-i{display:block;min-width:unset;width:auto}.cc_div .cloud #c-txt{font-size:.9em}.cc_div .cloud #c-bns{margin-top:1.625em}}
+</style>
+<script>
+/*!
+ * CookieConsent v2.9.2
+ * https://www.github.com/orestbida/cookieconsent
+ * Author Orest Bida
+ * Released under the MIT License
+ */
+!function(){'use strict';var n='initCookieConsent';'undefined'!=typeof window&&'function'!=typeof window[n]&&(window[n]=function(n){var t,o,e,i,r,a,c,u,f,d,v,l,s,p,b,m,y,g,h,_,w,k,x,S,J,O,j,N,T,D,C,U,z,E,I,L={mode:'opt-in',current_lang:'en',auto_language:null,autorun:!0,page_scripts:!0,hide_from_bots:!0,cookie_name:'cc_cookie',cookie_expiration:182,cookie_domain:location.hostname,cookie_path:'/',cookie_same_site:'Lax',use_rfc_cookie:!1,autoclear_cookies:!0,revision:0,script_selector:'data-cookiecategory'},M={},R={},A=null,G=!0,H=!1,P=!1,q=!1,B=!1,F=!0,K=[],Q=!1,V=[],W=[],X=[],Y=!1,Z=[],$=[],nn=[],tn=[],on=[],en=document.documentElement,rn=function(n){'number'==typeof(t=n).cookie_expiration&&(L.cookie_expiration=t.cookie_expiration),'number'==typeof t.cookie_necessary_only_expiration&&(L.cookie_necessary_only_expiration=t.cookie_necessary_only_expiration),'boolean'==typeof t.autorun&&(L.autorun=t.autorun),'string'==typeof t.cookie_domain&&(L.cookie_domain=t.cookie_domain),'string'==typeof t.cookie_same_site&&(L.cookie_same_site=t.cookie_same_site),'string'==typeof t.cookie_path&&(L.cookie_path=t.cookie_path),'string'==typeof t.cookie_name&&(L.cookie_name=t.cookie_name),'function'==typeof t.onAccept&&(v=t.onAccept),'function'==typeof t.onFirstAction&&(s=t.onFirstAction),'function'==typeof t.onChange&&(l=t.onChange),'opt-out'===t.mode&&(L.mode='opt-out'),'number'==typeof t.revision&&(t.revision>-1&&(L.revision=t.revision),B=!0),'boolean'==typeof t.autoclear_cookies&&(L.autoclear_cookies=t.autoclear_cookies),!0===t.use_rfc_cookie&&(L.use_rfc_cookie=!0),'boolean'==typeof t.hide_from_bots&&(L.hide_from_bots=t.hide_from_bots),L.hide_from_bots&&(Y=navigator&&(navigator.userAgent&&/bot|crawl|spider|slurp|teoma/i.test(navigator.userAgent)||navigator.webdriver)),L.page_scripts=!0===t.page_scripts,'browser'===t.auto_language||!0===t.auto_language?L.auto_language='browser':'document'===t.auto_language&&(L.auto_language='document'),L.auto_language,L.current_lang=sn(t.languages,t.current_lang)},an=function(n){for(var t='accept-',o=c('c-settings'),e=c(t+'all'),i=c(t+'necessary'),r=c(t+'custom'),a=0;a<o.length;a++)o[a].setAttribute('aria-haspopup','dialog'),wn(o[a],'click',(function(n){n.preventDefault(),M.showSettings(0)}));for(a=0;a<e.length;a++)wn(e[a],'click',(function(n){u(n,'all')}));for(a=0;a<r.length;a++)wn(r[a],'click',(function(n){u(n)}));for(a=0;a<i.length;a++)wn(i[a],'click',(function(n){u(n,[])}));function c(t){return(n||document).querySelectorAll('[data-cc="'+t+'"]')}function u(n,t){n.preventDefault(),M.accept(t),M.hideSettings(),M.hide()}},cn=function(n,t){return t.hasOwnProperty(n)?n:kn(t).length>0?t.hasOwnProperty(L.current_lang)?L.current_lang:kn(t)[0]:void 0},un=function(n){if(!0===t.force_consent&&xn(en,'force--consent'),!h){h=ln('div');var o=ln('div'),e=ln('div');h.id='cm',o.id='c-inr-i',e.id='cm-ov',h.tabIndex=-1,h.setAttribute('role','dialog'),h.setAttribute('aria-modal','true'),h.setAttribute('aria-hidden','false'),h.setAttribute('aria-labelledby','c-ttl'),h.setAttribute('aria-describedby','c-txt'),g.appendChild(h),g.appendChild(e),h.style.visibility=e.style.visibility='hidden',e.style.opacity=0}var i=t.languages[n].consent_modal.title;i&&(_||((_=ln('h2')).id='c-ttl',o.appendChild(_)),_.innerHTML=i);var r=t.languages[n].consent_modal.description;B&&(r=F?r.replace('{{revision_message}}',''):r.replace('{{revision_message}}',t.languages[n].consent_modal.revision_message||'')),w||((w=ln('div')).id='c-txt',o.appendChild(w)),w.innerHTML=r;var a,c=t.languages[n].consent_modal.primary_btn,u=t.languages[n].consent_modal.secondary_btn;c&&(k||((k=ln('button')).id='c-p-bn',k.className='c-bn',k.appendChild(On(1)),'accept_all'===c.role&&(a='all'),wn(k,'click',(function(){M.hide(),M.accept(a)}))),k.firstElementChild.innerHTML=t.languages[n].consent_modal.primary_btn.text),u&&(x||((x=ln('button')).id='c-s-bn',x.className='c-bn c_link',x.appendChild(On(1)),'accept_necessary'===u.role?wn(x,'click',(function(){M.hide(),M.accept([])})):wn(x,'click',(function(){M.showSettings(0)}))),x.firstElementChild.innerHTML=t.languages[n].consent_modal.secondary_btn.text);var f=t.gui_options;J||((J=ln('div')).id='c-inr',J.appendChild(o)),S||((S=ln('div')).id='c-bns',f&&f.consent_modal&&!0===f.consent_modal.swap_buttons?(u&&S.appendChild(x),c&&S.appendChild(k),S.className='swap'):(c&&S.appendChild(k),u&&S.appendChild(x)),(c||u)&&J.appendChild(S),h.appendChild(J)),H=!0,an(J)},fn=function(n){if(O)(C=ln('div')).id='s-bl';else{(O=ln('div')).tabIndex=-1;var o=ln('div'),e=ln('div'),i=ln('div');j=ln('div'),N=ln('h2');var r=ln('div');(T=ln('button')).appendChild(On(2));var a=ln('div');D=ln('div');var c=ln('div'),u=!1;wn(O,'mouseup',(function(n){!q||u||j.contains(n.target)||M.hideSettings()})),wn(O,'mousedown',(function(n){q&&(u=j.contains(n.target))})),O.id='s-cnt',o.id='c-vln',i.id='c-s-in',e.id='cs',N.id='s-ttl',j.id='s-inr',r.id='s-hdr',D.id='s-bl',T.id='s-c-bn',c.id='cs-ov',a.id='s-c-bnc',T.className='c-bn',O.setAttribute('role','dialog'),O.setAttribute('aria-modal','true'),O.setAttribute('aria-hidden','true'),O.setAttribute('aria-labelledby','s-ttl'),O.style.visibility=c.style.visibility='hidden',c.style.opacity=0,a.appendChild(T),wn(document,'keydown',(function(n){27===n.keyCode&&q&&M.hideSettings()}),!0),wn(T,'click',(function(){M.hideSettings()}))}var v=t.languages[n].settings_modal;T.setAttribute('aria-label',v.close_btn_label||'Close'),d=v.blocks,f=v.cookie_table_headers;var l=v.cookie_table_caption,s=d.length;N.innerHTML=v.title;for(var p=0;p<s;++p){var b=d[p].title,m=d[p].description,y=d[p].toggle,h=d[p].cookie_table,_=!0===t.remove_cookie_tables,w=!!m||!_&&!!h,k=ln('div'),x=ln('div');if(m){var S=ln('div');S.className='p',S.insertAdjacentHTML('beforeend',m)}var J=ln('div');if(J.className='title',k.className='c-bl',x.className='desc',void 0!==y){var L='c-ac-'+p,A=ln(w?'button':'div'),H=ln('label'),P=ln('input'),B=ln('span'),F=ln('span'),K=ln('span'),Q=ln('span');A.className=w?'b-tl exp':'b-tl',H.className='b-tg',P.className='c-tgl',K.className='on-i',Q.className='off-i',B.className='c-tg',F.className='t-lb',w&&(A.setAttribute('aria-expanded','false'),A.setAttribute('aria-controls',L)),P.type='checkbox',B.setAttribute('aria-hidden','true');var V=y.value;P.value=V,F.textContent=b,A.insertAdjacentHTML('beforeend',b),J.appendChild(A),B.appendChild(K),B.appendChild(Q),G?y.enabled?(P.checked=!0,!C&&nn.push(!0),y.enabled&&!C&&X.push(V)):!C&&nn.push(!1):vn(R.categories,V)>-1?(P.checked=!0,!C&&nn.push(!0)):!C&&nn.push(!1),!C&&tn.push(V),y.readonly&&(P.disabled=!0,xn(B,'c-ro'),!C&&on.push(V)),xn(x,'b-acc'),xn(J,'b-bn'),xn(k,'b-ex'),x.id=L,x.setAttribute('aria-hidden','true'),H.appendChild(P),H.appendChild(B),H.appendChild(F),J.appendChild(H),w&&function(n,t,o){wn(A,'click',(function(){Jn(t,'act')?(Sn(t,'act'),o.setAttribute('aria-expanded','false'),n.setAttribute('aria-hidden','true')):(xn(t,'act'),o.setAttribute('aria-expanded','true'),n.setAttribute('aria-hidden','false'))}),!1)}(x,k,A)}else if(b){var W=ln('div');W.className='b-tl',W.setAttribute('role','heading'),W.setAttribute('aria-level','3'),W.insertAdjacentHTML('beforeend',b),J.appendChild(W)}if(b&&k.appendChild(J),m&&x.appendChild(S),!_&&void 0!==h){for(var Y=document.createDocumentFragment(),Z=0;Z<f.length;++Z){var $=ln('th'),en=f[Z];if($.setAttribute('scope','col'),en){var rn=en&&kn(en)[0];$.textContent=f[Z][rn],Y.appendChild($)}}var an=ln('tr');an.appendChild(Y);var cn=ln('thead');cn.appendChild(an);var un=ln('table');if(l){var fn=ln('caption');fn.innerHTML=l,un.appendChild(fn)}un.appendChild(cn);for(var dn=document.createDocumentFragment(),sn=0;sn<h.length;sn++){for(var pn=ln('tr'),bn=0;bn<f.length;++bn)if(en=f[bn]){rn=kn(en)[0];var mn=ln('td');mn.insertAdjacentHTML('beforeend',h[sn][rn]),mn.setAttribute('data-column',en[rn]),pn.appendChild(mn)}dn.appendChild(pn)}var yn=ln('tbody');yn.appendChild(dn),un.appendChild(yn),x.appendChild(un)}(y&&b||!y&&(b||m))&&(k.appendChild(x),C?C.appendChild(k):D.appendChild(k))}U||((U=ln('div')).id='s-bns'),E||((E=ln('button')).id='s-all-bn',E.className='c-bn',U.appendChild(E),wn(E,'click',(function(){M.accept('all'),M.hideSettings(),M.hide()}))),E.innerHTML=v.accept_all_btn;var gn=v.reject_all_btn;if(gn&&(I||((I=ln('button')).id='s-rall-bn',I.className='c-bn',wn(I,'click',(function(){M.accept([]),M.hideSettings(),M.hide()})),j.className='bns-t',U.appendChild(I)),I.innerHTML=gn),z||((z=ln('button')).id='s-sv-bn',z.className='c-bn',U.appendChild(z),wn(z,'click',(function(){M.accept(),M.hideSettings(),M.hide()}))),z.innerHTML=v.save_settings_btn,C)return j.replaceChild(C,D),void(D=C);r.appendChild(N),r.appendChild(a),j.appendChild(r),j.appendChild(D),j.appendChild(U),i.appendChild(j),e.appendChild(i),o.appendChild(e),O.appendChild(o),g.appendChild(O),g.appendChild(c)};M.updateLanguage=function(n,o){if('string'==typeof n){var e=cn(n,t.languages);return(e!==L.current_lang||!0===o)&&(L.current_lang=e,H&&un(e),fn(e),!0)}};var dn=function(n){var t=d.length,o=-1;Q=!1;var e=hn('','all'),i=[L.cookie_domain,'.'+L.cookie_domain];if('www.'===L.cookie_domain.slice(0,4)){var r=L.cookie_domain.substr(4);i.push(r),i.push('.'+r)}for(var a=0;a<t;a++){var c=d[a];if(c.hasOwnProperty('toggle')){var u=vn(K,c.toggle.value)>-1;if(!nn[++o]&&c.hasOwnProperty('cookie_table')&&(n||u)){var v=c.cookie_table,l=kn(f[0])[0],s=v.length;'on_disable'===c.toggle.reload&&u&&(Q=!0);for(var p=0;p<s;p++){var b=i,m=v[p],y=[],g=m[l],h=m.is_regex||!1,_=m.domain||null,w=m.path||!1;if(_&&(b=[_,'.'+_]),h)for(var k=0;k<e.length;k++)e[k].match(g)&&y.push(e[k]);else{var x=vn(e,g);x>-1&&y.push(e[x])}y.length>0&&(_n(y,w,b),'on_clear'===c.toggle.reload&&(Q=!0))}}}}},vn=function(n,t){return n.indexOf(t)},ln=function(n){var t=document.createElement(n);return'button'===n&&t.setAttribute('type',n),t},sn=function(n,t){return'browser'===L.auto_language?cn(pn(),n):'document'===L.auto_language?cn(document.documentElement.lang,n):'string'==typeof t?L.current_lang=cn(t,n):(L.current_lang,L.current_lang)},pn=function(){var n=navigator.language||navigator.browserLanguage;return n.length>2&&(n=n[0]+n[1]),n.toLowerCase()};M.allowedCategory=function(n){if(G&&'opt-in'!==L.mode)t=X;else var t=JSON.parse(hn(L.cookie_name,'one',!0)||'{}').categories||[];return vn(t,n)>-1},M.run=function(t){if(!document.getElementById('cc_div')){if(rn(t),Y)return;R=JSON.parse(hn(L.cookie_name,'one',!0)||'{}');var c=void 0!==(i=R.consent_uuid);if((o=R.consent_date)&&(o=new Date(o)),(e=R.last_consent_update)&&(e=new Date(e)),A=void 0!==R.data?R.data:null,B&&R.revision!==L.revision&&(F=!1),H=G=!(c&&F&&o&&e&&i),function(){(y=ln('div')).id='cc--main',y.style.position='fixed',y.innerHTML='<div id="cc_div" class="cc_div"></div>',g=y.children[0];var t=L.current_lang;H&&un(t),fn(t),(n||document.body).appendChild(y)}(),function(){var n=['[href]','button','input','details','[tabindex="0"]'];function t(t,o){try{var e=t.querySelectorAll(n.join(':not([tabindex="-1"]), '))}catch(o){return t.querySelectorAll(n.join(', '))}o[0]=e[0],o[1]=e[e.length-1]}t(j,$),H&&t(h,Z)}(),function(n,t){if('object'==typeof n){var o=n.consent_modal,e=n.settings_modal;H&&o&&i(h,['box','bar','cloud'],['top','middle','bottom'],['zoom','slide'],o.layout,o.position,o.transition),e&&i(O,['bar'],['left','right'],['zoom','slide'],e.layout,e.position,e.transition)}function i(n,t,o,e,i,r,a){if(r=r&&r.split(' ')||[],vn(t,i)>-1&&(xn(n,i),('bar'!==i||'middle'!==r[0])&&vn(o,r[0])>-1))for(var c=0;c<r.length;c++)xn(n,r[c]);vn(e,a)>-1&&xn(n,a)}}(t.gui_options),an(),L.autorun&&H&&M.show(t.delay||0),setTimeout((function(){xn(y,'c--anim')}),30),setTimeout((function(){wn(document,'keydown',(function(n){if('Tab'===n.key&&(P||q)&&r){var t=Tn();n.shiftKey?t!==r[0]&&a.contains(t)||(n.preventDefault(),jn(r[1])):t!==r[1]&&a.contains(t)||(n.preventDefault(),jn(r[0]))}}))}),100),G)'opt-out'===L.mode&&(L.mode,bn());else{var u='boolean'==typeof R.rfc_cookie;(!u||u&&R.rfc_cookie!==L.use_rfc_cookie)&&(R.rfc_cookie=L.use_rfc_cookie,gn(L.cookie_name,JSON.stringify(R))),p=yn(mn()),bn(),'function'==typeof v&&v(R)}}};var bn=function(){if(L.page_scripts){var n=R.categories||[];G&&'opt-out'===L.mode&&(n=X);var t=document.querySelectorAll('script['+L.script_selector+']'),o=function(t,e){if(e<t.length){var i=t[e],r=i.getAttribute(L.script_selector);if(vn(n,r)>-1){i.type=i.getAttribute('data-type')||'text/javascript',i.removeAttribute(L.script_selector);var a=i.getAttribute('data-src');a&&i.removeAttribute('data-src');var c=ln('script');if(c.textContent=i.innerHTML,function(n,t){for(var o=t.attributes,e=o.length,i=0;i<e;i++){var r=o[i].nodeName;n.setAttribute(r,t[r]||t.getAttribute(r))}}(c,i),a?c.src=a:a=i.src,a&&(c.readyState?c.onreadystatechange=function(){'loaded'!==c.readyState&&'complete'!==c.readyState||(c.onreadystatechange=null,o(t,++e))}:c.onload=function(){c.onload=null,o(t,++e)}),i.parentNode.replaceChild(c,i),a)return}o(t,++e)}};o(t,0)}};M.set=function(n,t){return'data'===n&&function(n,t){var o=!1;if('update'===t){var e=typeof(A=M.get('data'))==typeof n;if(e&&'object'==typeof A)for(var i in!A&&(A={}),n)A[i]!==n[i]&&(A[i]=n[i],o=!0);else!e&&A||A===n||(A=n,o=!0)}else A=n,o=!0;return o&&(R.data=A,gn(L.cookie_name,JSON.stringify(R))),o}(t.value,t.mode)},M.get=function(n,t){return JSON.parse(hn(t||L.cookie_name,'one',!0)||'{}')[n]},M.getConfig=function(n){return L[n]||t[n]};var mn=function(){return V=R.categories||[],W=tn.filter((function(n){return-1===vn(V,n)})),{accepted:V,rejected:W}},yn=function(n){var t='custom',o=on.length;return n.accepted.length===tn.length?t='all':n.accepted.length===o&&(t='necessary'),t};M.getUserPreferences=function(){var n=mn();return{accept_type:yn(n),accepted_categories:n.accepted,rejected_categories:n.rejected}},M.loadScript=function(n,t,o){var e='function'==typeof t;if(document.querySelector('script[src="'+n+'"]'))e&&t();else{var i=ln('script');if(o&&o.length>0)for(var r=0;r<o.length;++r)o[r]&&i.setAttribute(o[r].name,o[r].value);e&&(i.onload=t),i.src=n,document.head.appendChild(i)}},M.updateScripts=function(){bn()},M.show=function(n,t){!0===t&&un(L.current_lang),H&&(b=Tn(),r=Z,a=h,P=!0,h.removeAttribute('aria-hidden'),setTimeout((function(){xn(en,'show--consent')}),n>0?n:t?30:0))},M.hide=function(){H&&(P=!1,jn(c),h.setAttribute('aria-hidden','true'),Sn(en,'show--consent'),jn(b),b=null)},M.showSettings=function(n){q=!0,O.removeAttribute('aria-hidden'),P?m=Tn():b=Tn(),a=O,r=$,setTimeout((function(){xn(en,'show--settings')}),n>0?n:0)},M.hideSettings=function(){q=!1,Nn(),jn(u),O.setAttribute('aria-hidden','true'),Sn(en,'show--settings'),P?(jn(m),m=null,a=h,r=Z):(jn(b),b=null)},M.accept=function(n,t){var r=n||void 0,a=t||[],c=[];if(r)if('object'==typeof r&&'number'==typeof r.length)for(var u=0;u<r.length;u++)-1!==vn(tn,r[u])&&c.push(r[u]);else'string'==typeof r&&('all'===r?c=tn.slice():-1!==vn(tn,r)&&c.push(r));else c=function(){for(var n=document.querySelectorAll('.c-tgl')||[],t=[],o=0;o<n.length;o++)n[o].checked&&t.push(n[o].value);return t}();if(a.length>=1)for(u=0;u<a.length;u++)c=c.filter((function(n){return n!==a[u]}));for(u=0;u<tn.length;u++)!0===on.includes(tn[u])&&-1===vn(c,tn[u])&&c.push(tn[u]);!function(n){K=[];var t=O.querySelectorAll('.c-tgl')||[];if(t.length>0)for(var r=0;r<t.length;r++)-1!==vn(n,tn[r])?(t[r].checked=!0,nn[r]||(K.push(tn[r]),nn[r]=!0)):(t[r].checked=!1,nn[r]&&(K.push(tn[r]),nn[r]=!1));!G&&L.autoclear_cookies&&K.length>0&&dn(),o||(o=new Date),i||(i=([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,(function(n){try{return(n^(window.crypto||window.msCrypto).getRandomValues(new Uint8Array(1))[0]&15>>n/4).toString(16)}catch(n){return''}}))),R={categories:n,level:n,revision:L.revision,data:A,rfc_cookie:L.use_rfc_cookie,consent_date:o.toISOString(),consent_uuid:i},(G||K.length>0)&&(F=!0,e=e?new Date:o,R.last_consent_update=e.toISOString(),p=yn(mn()),gn(L.cookie_name,JSON.stringify(R)),bn()),G&&(L.autoclear_cookies&&dn(!0),'function'==typeof s&&s(M.getUserPreferences(),R),'function'==typeof v&&v(R),G=!1,'opt-in'===L.mode)||('function'==typeof l&&K.length>0&&l(R,K),Q&&location.reload())}(c)},M.eraseCookies=function(n,t,o){var e=[],i=o?[o,'.'+o]:[L.cookie_domain,'.'+L.cookie_domain];if('object'==typeof n&&n.length>0)for(var r=0;r<n.length;r++)this.validCookie(n[r])&&e.push(n[r]);else this.validCookie(n)&&e.push(n);_n(e,t,i)};var gn=function(n,t){var o=L.cookie_expiration;'number'==typeof L.cookie_necessary_only_expiration&&'necessary'===p&&(o=L.cookie_necessary_only_expiration),t=L.use_rfc_cookie?encodeURIComponent(t):t;var e=new Date;e.setTime(e.getTime()+24*o*60*60*1e3);var i=n+'='+(t||'')+'; expires='+e.toUTCString()+'; Path='+L.cookie_path+';';i+=' SameSite='+L.cookie_same_site+';',location.hostname.indexOf('.')>-1&&L.cookie_domain&&(i+=' Domain='+L.cookie_domain+';'),'https:'===location.protocol&&(i+=' Secure;'),document.cookie=i},hn=function(n,t,o){var e;if('one'===t){if((e=(e=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)'))?o?e.pop():n:'')&&n===L.cookie_name){try{e=JSON.parse(e)}catch(n){try{e=JSON.parse(decodeURIComponent(e))}catch(n){e={}}}e=JSON.stringify(e)}}else if('all'===t){var i=document.cookie.split(/;\s*/);e=[];for(var r=0;r<i.length;r++)e.push(i[r].split('=')[0])}return e},_n=function(n,t,o){for(var e=t||'/',i=0;i<n.length;i++){for(var r=0;r<o.length;r++)document.cookie=n[i]+'=; path='+e+(0==o[r].indexOf('.')?'; domain='+o[r]:'')+'; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';n[i]}};M.validCookie=function(n){return''!==hn(n,'one',!0)},M.validConsent=function(){return!G};var wn=function(n,t,o,e){n.addEventListener(t,o,!0===e&&{passive:!0})},kn=function(n){if('object'==typeof n)return Object.keys(n)},xn=function(n,t){n.classList.add(t)},Sn=function(n,t){n.classList.remove(t)},Jn=function(n,t){return n.classList.contains(t)},On=function(n){var t=ln('span');return t.tabIndex=-1,1===n?c=t:u=t,t},jn=function(n){n&&n instanceof HTMLElement&&n.focus()},Nn=function(){for(var n=j.querySelectorAll('.c-tgl'),t=0;t<n.length;t++){var o=n[t].value,e=on.includes(o);n[t].checked=e||M.allowedCategory(o)}},Tn=function(){return document.activeElement};return M})}();
+</script>
+<script>
+    window.addEventListener('load', function () {
+
+        // obtain plugin
+        var cc = initCookieConsent();
+
+        // run plugin with your configuration
+        cc.run({
+            cookie_domain: /(^|\.)sidecartridge\.com$/.test(location.hostname) ? 'sidecartridge.com' : location.hostname,
+            current_lang: 'en',
+            autoclear_cookies: true,                   // default: false
+            page_scripts: true,                        // default: false
+
+            onFirstAction: function (user_preferences, cookie) {
+                // callback triggered only once on the first accept/reject action
+            },
+
+            onAccept: function (cookie) {
+                // callback triggered on the first accept/reject action, and after each page load
+            },
+
+            onChange: function (cookie, changed_preferences) {
+                // If analytics category is disabled => disable google analytics
+                if (!cc.allowedCategory('analytics')) {
+                    typeof gtag === 'function' && gtag('consent', 'update', {
+                        'analytics_storage': 'denied'
+                    });
+                }
+            },
+
+            languages: {
+                'en': {
+                    consent_modal: {
+                        title: 'We use cookies!',
+                        description: 'Hi, this website uses essential cookies to ensure its proper operation and tracking cookies to understand how you interact with it. The latter will be set only after consent. <button type="button" data-cc="c-settings" class="cc-link">Let me choose</button>',
+                        primary_btn: {
+                            text: 'Accept all',
+                            role: 'accept_all'              // 'accept_selected' or 'accept_all'
+                        },
+                        secondary_btn: {
+                            text: 'Reject all',
+                            role: 'accept_necessary'        // 'settings' or 'accept_necessary'
+                        }
+                    },
+                    settings_modal: {
+                        title: 'Cookie preferences',
+                        save_settings_btn: 'Save settings',
+                        accept_all_btn: 'Accept all',
+                        reject_all_btn: 'Reject all',
+                        close_btn_label: 'Close',
+                        cookie_table_headers: [
+                            { col1: 'Name' },
+                            { col2: 'Domain' },
+                            { col3: 'Expiration' },
+                            { col4: 'Description' }
+                        ],
+                        blocks: [
+                            {
+                                title: 'Cookie usage 📢',
+                                description: 'I use cookies to ensure the basic functionalities of the website and to enhance your online experience. You can choose for each category to opt-in/out whenever you want. For more details relative to cookies and other sensitive data, please read the full <a href="https://sidecartridge.com/privacy-policy/" class="cc-link" target="_blank" rel="noopener">privacy policy</a>.'
+                            }, {
+                                title: 'Strictly necessary cookies',
+                                description: 'These cookies are essential for the proper functioning of my website. Without these cookies, the website would not work properly',
+                                toggle: {
+                                    value: 'necessary',
+                                    enabled: true,
+                                    readonly: true          // cookie categories with readonly=true are all treated as "necessary cookies"
+                                }
+                            }, {
+                                title: 'Performance and Analytics cookies',
+                                description: 'These cookies allow the website to remember the choices you have made in the past',
+                                toggle: {
+                                    value: 'analytics',     // your cookie category
+                                    enabled: false,
+                                    readonly: false
+                                },
+                                cookie_table: [             // list of all expected cookies
+                                    {
+                                        col1: '^_ga',       // match all cookies starting with "_ga"
+                                        col2: 'google.com',
+                                        col3: '2 years',
+                                        col4: 'description ...',
+                                        is_regex: true
+                                    },
+                                    {
+                                        col1: '_gid',
+                                        col2: 'google.com',
+                                        col3: '1 day',
+                                        col4: 'description ...',
+                                    }
+                                ]
+                            },
+                            {
+                                title: 'More information',
+                                description: 'For any queries in relation to our policy on cookies and your choices, please <a class="cc-link" href="https://sidecartridge.com/" target="_blank" rel="noopener">contact us</a>.',
+                            }
+                        ]
+                    }
+                }
+            }
+        });
+    });
+</script>
+<!-- Google Analytics, the sidecartridge.com property. cookieconsent runs
+     this only after the analytics category is accepted (page_scripts), and it
+     only loads gtag on *.sidecartridge.com, so local and LAN tests send no hits.
+     gtag's default cookie_domain 'auto' puts _ga on .sidecartridge.com, shared
+     with the main site. -->
+<script type="text/plain" data-cookiecategory="analytics">
+    (function () {
+        var GA_ID = 'G-6VT9RXTJ2N';
+        if (!/(^|\.)sidecartridge\.com$/.test(location.hostname)) return;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () { dataLayer.push(arguments); };
+        gtag('js', new Date());
+        gtag('config', GA_ID);
+    })();
+</script>
+</head>
+
+<body class="c_darkmode">
+
+<nav class="top-banner">
+  <a class="brand-link" href="https://sidecartridge.com" target="_blank" rel="noopener">
+    <img class="brand-mark" src="https://sidecartridge.com/assets/images/logo/logo.png" alt="SidecarTridge logo mark">
+    <img class="brand-wordmark" src="https://sidecartridge.com/assets/images/logo/logo-text.png" alt="SidecarTridge">
+  </a>
+  <a href="https://sidecartridge.com" id="backLink" class="back-link">&#8592; Back</a>
+</nav>
+
+<div id="browserWarning" style="display:none; padding:12px; background:#7f1d1d; border-radius:6px; margin-bottom:16px;">
+  Your browser lacks the File, Blob or DecompressionStream APIs this page needs. Please use a recent version of Chrome, Firefox, or Safari.
+</div>
+
+<div id="app">
+  <h2>MagiC ROM Builder</h2>
+  <p style="margin-top:6px; color:#cbd5f5;">
+    Turn Andreas Kromke's MagiC for Atari into a 256&nbsp;KB ROM image that boots in place of TOS, plus the
+    boot floppy or hard disk files it loads its desktop from. The ROM runs at <code>$E00000</code>: in the
+    <a href="https://sidecartridge.com/products/sidecartridge-tos-atari-st/" target="_blank" rel="noopener" style="color:#fde047;">SidecarTridge TOS Emulator</a>
+    on an STE or Mega STE, on an ST or Mega ST with the
+    <a href="https://sidecartridge.com/products/sidecartridge-256kb-decoder-atari-st/" target="_blank" rel="noopener" style="color:#fde047;">SidecarTridge 256&nbsp;KB Decoder</a>, or in Hatari.
+    Everything is built in your browser.
+  </p>
+
+  <section class="about">
+    <div class="about-card">
+      <h3>What is MagiC?</h3>
+      <p>
+        MagiC is an alternative operating system for the Atari ST family, written by Andreas Kromke. It started
+        in 1990 as Mag!X and replaces TOS with a <strong>multitasking</strong> system: several GEM programs run at
+        the same time, each in its own windows, while it stays compatible with the software written for TOS.
+      </p>
+      <ul>
+        <li>Multitasking AES with a modern window manager, and the <strong>MAGXDESK</strong> desktop.</li>
+        <li><strong>MVDI</strong>, the fast graphics library by Sven and Wilfried Behne, with loadable screen drivers.</li>
+        <li>Long file names (VFAT), shared libraries, the <strong>MCMD</strong> command line and a set of small tools.</li>
+      </ul>
+      <p>
+        It was sold commercially for Atari computers, and later as MagiC Mac and MagiC PC for other machines. In
+        2018 Kromke published the complete sources under the GPLv3, and in 2026 he released
+        <strong>MagiC 6.30</strong> for Atari computers: the version this page builds.
+      </p>
+    </div>
+    <div class="about-card">
+      <h3>Why a ROM?</h3>
+      <p>
+        MagiC normally ships as a program: TOS boots first, then <code>AUTO\MAGXBOOT</code> loads the kernel
+        (<code>MAGIC.RAM</code>) from disk into RAM and hands the machine over. In ROM, MagiC <em>is</em> the operating
+        system from the moment you switch on:
+      </p>
+      <ul>
+        <li><strong>No TOS needed</strong>, and no loader in the AUTO folder.</li>
+        <li><strong>About 240&nbsp;KB more free RAM</strong>: the kernel runs in place from ROM instead of being copied
+          into memory. On a 1&nbsp;MB ST that is almost a quarter of the machine.</li>
+        <li><strong>Faster boot</strong>: the kernel is not read from floppy or hard disk on every start.</li>
+        <li><strong>One click to switch</strong>: with the SidecarTridge TOS Emulator, choose the MagiC image or a TOS
+          image from the same device.</li>
+      </ul>
+      <p class="hint">
+        The ROM still loads its screen drivers and desktop from a disk, so this page also builds the boot floppy or
+        the hard disk files that go with it.
+      </p>
+    </div>
+  </section>
+
+  <ul class="steps" id="steps">
+
+    <li id="step1" class="step active">
+      <div class="step-header"><span>Step 1/4. MagiC release <button type="button" class="help-icon" data-help-key="release" aria-label="Help: MagiC release" title="MagiC release">?</button></span> <span class="step-status">Ready</span></div>
+      <div class="step-content">
+        <div class="options-grid">
+          <fieldset style="grid-column: 1 / -1;">
+            <legend>Source</legend>
+            <label><input type="radio" name="source" value="bundled" checked> Bundled release <code id="bundledName"></code></label>
+            <label><input type="radio" name="source" value="upload"> My own <code>Atari-MagiC-*.zip</code></label>
+          </fieldset>
+        </div>
+        <div id="dropZone" class="drop-zone" style="display:none; margin-top:10px;">
+          Drag and drop an <code>Atari-MagiC-*.zip</code> release here, or
+          <label for="fileInput" class="browse-link">browse</label>.
+          <input type="file" id="fileInput" accept=".zip,application/zip" style="display:none">
+        </div>
+        <div id="step1Hint" class="hint" style="margin-top:8px;"></div>
+      </div>
+    </li>
+
+    <li id="step2" class="step">
+      <div class="step-header"><span>Step 2/4. Options <button type="button" class="help-icon" data-help-key="options" aria-label="Help: Options" title="Options">?</button></span> <span class="step-status">Pending</span></div>
+      <div class="step-content">
+        <div class="options-grid">
+          <fieldset>
+            <legend>Language</legend>
+            <label><input type="radio" name="lang" value="EN" checked> English</label>
+            <label><input type="radio" name="lang" value="DE"> Deutsch</label>
+            <label><input type="radio" name="lang" value="FR"> Fran&ccedil;ais</label>
+          </fieldset>
+          <fieldset>
+            <legend>Boot from <button type="button" class="help-icon" data-help-key="target" aria-label="Help: Boot from" title="Boot from">?</button></legend>
+            <label><input type="radio" name="target" value="floppy" checked> Floppy, system on <code>A:</code></label>
+            <label><input type="radio" name="target" value="harddisk"> Hard disk, system on <code>C:</code></label>
+          </fieldset>
+        </div>
+      </div>
+    </li>
+
+    <li id="step3" class="step">
+      <div class="step-header">Step 3/4. Build <span class="step-status">Pending</span></div>
+      <div class="step-content">
+        <p>Click <strong>Build</strong>. The log below shows what goes into the ROM and the boot files.</p>
+        <button id="buildBtn" type="button" disabled>Build</button>
+      </div>
+    </li>
+
+    <li id="step4" class="step">
+      <div class="step-header"><span>Step 4/4. Download <button type="button" class="help-icon" data-help-key="install" aria-label="Help: Install" title="Install">?</button></span> <span class="step-status">Pending</span></div>
+      <div class="step-content">
+        <div id="downloads"></div>
+        <div id="installHint" class="hint" style="margin-top:10px;"></div>
+        <button id="resetBtn" type="button" style="margin-top:12px; background:#1f2937; color:#f9fafb;">Build another</button>
+      </div>
+    </li>
+
+  </ul>
+
+  <div class="progress-wrap">
+    <progress id="prog" value="0" max="100"></progress>
+    <div id="progLabel" class="progress-label">0%</div>
+  </div>
+
+  <div style="margin:10px 0 6px; color:#cbd5f5; display:flex; align-items:center; gap:8px;">
+    <button id="toggleLog" type="button" style="background:#1f2937; color:#f9fafb;">Hide process output</button>
+  </div>
+  <div id="log" class="log" role="log" aria-live="polite"></div>
+
+</div>
+
+<footer class="credits">
+  <div class="credits-inner">
+    <h3>Built on the work of</h3>
+    <div class="credits-grid">
+      <section>
+        <h4>MagiC</h4>
+        <ul>
+          <li><a href="https://gitlab.com/AndreasK/Atari-Mac-MagiC-Sources" target="_blank" rel="noopener">Atari-Mac-MagiC-Sources</a>: MagiC for Atari by Andreas Kromke, sources and the <code>Atari-MagiC</code> releases (GPLv3). The bundled release is unmodified.</li>
+          <li><a href="https://gitlab.com/AndreasK/magiclinux" target="_blank" rel="noopener">MagicOnLinux</a>: where the release's kernels and root file system are built.</li>
+          <li><a href="https://www.atariuptodate.de/de/3770/magicrom" target="_blank" rel="noopener">MAGICROM</a> by Wilfried Mintrop (1996): the original MagiC to ROM converter, studied to understand the ROM layout.</li>
+        </ul>
+      </section>
+      <section>
+        <h4>Built with</h4>
+        <ul>
+          <li><a href="https://github.com/emutos/emutos" target="_blank" rel="noopener">EmuTOS</a>: the ST/STE memory detection in the boot stub is adapted from its <code>memory.S</code> (GPL v2 or later).</li>
+          <li><a href="http://sun.hasenbraten.de/vasm/" target="_blank" rel="noopener">vasm</a> by Volker Barthelmann and Frank Wille: assembles the boot stub.</li>
+          <li><a href="https://github.com/sidecartridge/atarist-toolkit-docker" target="_blank" rel="noopener">atarist-toolkit-docker</a>: the Atari ST cross toolchain that runs vasm.</li>
+          <li><a href="https://github.com/sidecartridge/USM-web" target="_blank" rel="noopener">USM-web</a>: the single-page builder this tool follows.</li>
+        </ul>
+      </section>
+      <section>
+        <h4>Tested with</h4>
+        <ul>
+          <li><a href="https://www.hatari-emu.org/" target="_blank" rel="noopener">Hatari</a>: every ROM boots to the MagiC desktop on the emulated ST, Mega ST, STE and Mega STE, 512 KB to 4 MB (Hatari maps the ROM at <code>$E00000</code> on every model; a real ST or Mega ST needs the <a href="https://sidecartridge.com/products/sidecartridge-256kb-decoder-atari-st/" target="_blank" rel="noopener">256 KB decoder</a>).</li>
+          <li><a href="https://www.capstone-engine.org/" target="_blank" rel="noopener">Capstone</a>: 68000 disassembly while studying the kernel.</li>
+          <li><a href="https://www.gnu.org/software/mtools/" target="_blank" rel="noopener">GNU mtools</a>: checks of the floppy and hard disk images.</li>
+          <li>ICD AdSCSI Pro 6.5.5 driver: boots the hard disk test images.</li>
+        </ul>
+      </section>
+      <section>
+        <h4>Runs on</h4>
+        <ul>
+          <li><a href="https://sidecartridge.com/products/sidecartridge-tos-atari-st/" target="_blank" rel="noopener">SidecarTridge TOS Emulator</a>: the ROM emulator this image is made for.</li>
+          <li><a href="https://sidecartridge.com/products/sidecartridge-256kb-decoder-atari-st/" target="_blank" rel="noopener">SidecarTridge 256 KB Decoder</a>: maps the 256 KB ROM space at <code>$E00000</code> on an ST or Mega ST.</li>
+        </ul>
+      </section>
+    </div>
+    <p class="credits-license">
+      This builder and its boot stub are GPLv3:
+      <a href="https://github.com/sidecartridge/magic-c-builder" target="_blank" rel="noopener">github.com/sidecartridge/magic-c-builder</a>.
+      MagiC is &copy; Andreas Kromke, GPLv3.
+      <span class="credits-links">
+        <a href="#" data-cc="c-settings">Cookies</a> &middot;
+        <a href="https://sidecartridge.com/privacy-policy/" target="_blank" rel="noopener">Privacy policy</a>
+      </span>
+    </p>
+  </div>
+</footer>
+
+<dialog id="helpModal" aria-labelledby="helpModalTitle">
+  <div class="modal-panel">
+    <header class="modal-header">
+      <h3 id="helpModalTitle"></h3>
+      <button type="button" class="modal-close" aria-label="Close help">&times;</button>
+    </header>
+    <div id="helpModalBody" class="modal-body"></div>
+  </div>
+</dialog>
+
+<script type="module">
+// AUTOGENERATED by build.mjs, do not hand-edit index.html.
+
+// ----- zip.js -----
+// Minimal ZIP support: read stored/deflated archives (the MagiC release),
+// write stored archives (the hard disk file set). Inflate uses the
+// platform's DecompressionStream, available in browsers and Node 18+.
+
+let CRC_TABLE = null;
+function crc32(data) {
+  if (!CRC_TABLE) {
+    CRC_TABLE = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      CRC_TABLE[n] = c >>> 0;
+    }
+  }
+  let crc = 0xffffffff;
+  for (let i = 0; i < data.length; i++) crc = CRC_TABLE[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function readLE16(buf, off) {
+  return buf[off] | (buf[off + 1] << 8);
+}
+
+function readLE32(buf, off) {
+  return (buf[off] | (buf[off + 1] << 8) | (buf[off + 2] << 16) | (buf[off + 3] << 24)) >>> 0;
+}
+
+async function inflateRaw(data) {
+  const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+// Returns a Map of path -> Uint8Array for every file in the archive.
+// Directory entries are skipped; paths use forward slashes.
+async function readZip(bytes) {
+  let eocd = -1;
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 22 - 0xffff); i--) {
+    if (readLE32(bytes, i) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw new Error('Not a ZIP archive (no end-of-central-directory record).');
+  const count = readLE16(bytes, eocd + 10);
+  let p = readLE32(bytes, eocd + 16);
+  const files = new Map();
+  for (let n = 0; n < count; n++) {
+    if (readLE32(bytes, p) !== 0x02014b50) throw new Error('Corrupt ZIP central directory.');
+    const method = readLE16(bytes, p + 10);
+    const crc = readLE32(bytes, p + 16);
+    const compSize = readLE32(bytes, p + 20);
+    const size = readLE32(bytes, p + 24);
+    const nameLen = readLE16(bytes, p + 28);
+    const extraLen = readLE16(bytes, p + 30);
+    const commentLen = readLE16(bytes, p + 32);
+    const local = readLE32(bytes, p + 42);
+    const name = new TextDecoder('latin1').decode(bytes.subarray(p + 46, p + 46 + nameLen)).replace(/\\/g, '/');
+    p += 46 + nameLen + extraLen + commentLen;
+    if (name.endsWith('/')) continue;
+    if (readLE32(bytes, local) !== 0x04034b50) throw new Error(`Corrupt ZIP entry ${name}.`);
+    const start = local + 30 + readLE16(bytes, local + 26) + readLE16(bytes, local + 28);
+    const raw = bytes.subarray(start, start + compSize);
+    let data;
+    if (method === 0) data = raw.slice();
+    else if (method === 8) data = await inflateRaw(raw);
+    else throw new Error(`ZIP entry ${name} uses unsupported compression method ${method}.`);
+    if (data.length !== size || crc32(data) !== crc) throw new Error(`ZIP entry ${name} failed its CRC check.`);
+    files.set(name, data);
+  }
+  return files;
+}
+
+// MS-DOS date/time fields for a { year, month, day, hour, minute } stamp.
+function dosDateTime(stamp) {
+  const date = ((stamp.year - 1980) << 9) | (stamp.month << 5) | stamp.day;
+  const time = (stamp.hour << 11) | (stamp.minute << 5);
+  return { date, time };
+}
+
+// files: array of { path, data }; every entry gets the same timestamp so
+// the archive is reproducible. Stored (uncompressed): the payload is small.
+function writeZip(files, stamp) {
+  const { date, time } = dosDateTime(stamp);
+  const enc = new TextEncoder();
+  const locals = [];
+  const centrals = [];
+  let offset = 0;
+  for (const f of files) {
+    const name = enc.encode(f.path);
+    const crc = crc32(f.data);
+    const local = new Uint8Array(30 + name.length);
+    const lv = new DataView(local.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(10, time, true);
+    lv.setUint16(12, date, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, f.data.length, true);
+    lv.setUint32(22, f.data.length, true);
+    lv.setUint16(26, name.length, true);
+    local.set(name, 30);
+    const central = new Uint8Array(46 + name.length);
+    const cv = new DataView(central.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(12, time, true);
+    cv.setUint16(14, date, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, f.data.length, true);
+    cv.setUint32(24, f.data.length, true);
+    cv.setUint16(28, name.length, true);
+    cv.setUint32(42, offset, true);
+    central.set(name, 46);
+    locals.push(local, f.data);
+    centrals.push(central);
+    offset += local.length + f.data.length;
+  }
+  const centralSize = centrals.reduce((n, c) => n + c.length, 0);
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, centralSize, true);
+  ev.setUint32(16, offset, true);
+  const out = new Uint8Array(offset + centralSize + 22);
+  let p = 0;
+  for (const part of [...locals, ...centrals, end]) {
+    out.set(part, p);
+    p += part.length;
+  }
+  return out;
+}
+
+// ----- sha256.js -----
+// SHA-256 (FIPS 180-4) in plain JS, for the build summary. crypto.subtle
+// only exists on secure origins (HTTPS, localhost), and the page must also
+// work when served over plain HTTP on a local network.
+
+const K = new Uint32Array([
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+]);
+function sha256Hex(data) {
+  const len = data.length;
+  const blocks = Math.ceil((len + 9) / 64);
+  const msg = new Uint8Array(blocks * 64);
+  msg.set(data);
+  msg[len] = 0x80;
+  const bits = len * 8;
+  const view = new DataView(msg.buffer);
+  view.setUint32(msg.length - 8, Math.floor(bits / 0x100000000));
+  view.setUint32(msg.length - 4, bits >>> 0);
+
+  const h = new Uint32Array([
+    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+  ]);
+  const w = new Uint32Array(64);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let b = 0; b < blocks; b++) {
+    for (let i = 0; i < 16; i++) w[i] = view.getUint32(b * 64 + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+    }
+    let [a, bb, c, d, e, f, g, hh] = h;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (hh + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+      const t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & bb) ^ (a & c) ^ (bb & c))) | 0;
+      hh = g;
+      g = f;
+      f = e;
+      e = (d + t1) | 0;
+      d = c;
+      c = bb;
+      bb = a;
+      a = (t1 + t2) | 0;
+    }
+    h[0] += a;
+    h[1] += bb;
+    h[2] += c;
+    h[3] += d;
+    h[4] += e;
+    h[5] += f;
+    h[6] += g;
+    h[7] += hh;
+  }
+  return [...h].map((x) => x.toString(16).padStart(8, '0')).join('');
+}
+
+// ----- fat12.js -----
+// Write a 720 KB double-sided Atari ST floppy image (.ST) holding a file
+// tree. The geometry and BPB match what TOS formats (80 tracks, 9 sectors,
+// 2 sides, 2 sectors per cluster, 5 sectors per FAT, 112 root entries), and
+// the boot sector is deliberately not executable.
+
+const SECTOR = 512;
+const GEOMETRY = {
+  sectors: 1440, spt: 9, heads: 2, spc: 2, reserved: 1, fats: 2, spf: 5, rootEntries: 112, media: 0xf9,
+};
+
+function writeLE16(buf, off, v) {
+  buf[off] = v & 0xff;
+  buf[off + 1] = (v >>> 8) & 0xff;
+}
+
+function writeLE32(buf, off, v) {
+  writeLE16(buf, off, v & 0xffff);
+  writeLE16(buf, off + 2, v >>> 16);
+}
+
+// 8.3 directory name, upper case, space padded. Throws on names GEMDOS
+// cannot hold, so a bad input never yields a silently renamed file.
+function shortName(name) {
+  const upper = name.toUpperCase();
+  const m = /^([A-Z0-9_!#$%&'()\-@^{}~]{1,8})(?:\.([A-Z0-9_!#$%&'()\-@^{}~]{1,3}))?$/.exec(upper);
+  if (!m) throw new Error(`"${name}" is not a valid 8.3 file name.`);
+  return (m[1].padEnd(8, ' ') + (m[2] || '').padEnd(3, ' '));
+}
+
+// Build a tree { name, children: Map, data } from [{ path, data }].
+function buildTree(files) {
+  const root = { name: '', children: new Map() };
+  for (const f of files) {
+    const parts = f.path.split('/').filter(Boolean);
+    let node = root;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const key = parts[i].toUpperCase();
+      if (!node.children.has(key)) node.children.set(key, { name: parts[i], children: new Map() });
+      node = node.children.get(key);
+      if (!node.children) throw new Error(`${f.path}: a file is in the way of a folder.`);
+    }
+    const key = parts[parts.length - 1].toUpperCase();
+    if (node.children.has(key)) throw new Error(`${f.path}: duplicate entry.`);
+    node.children.set(key, { name: parts[parts.length - 1], data: f.data });
+  }
+  return root;
+}
+
+function sortedChildren(node) {
+  return [...node.children.values()].sort((a, b) => (a.name.toUpperCase() < b.name.toUpperCase() ? -1 : 1));
+}
+
+// files: [{ path: 'GEMSYS/MFA2.SYS', data: Uint8Array }]
+// stamp: { year, month, day, hour, minute } for every directory entry
+// Returns { image, freeBytes }.
+function buildFloppy(files, { label = '', stamp, serial = 0x4d4147 } = {}) {
+  const g = GEOMETRY;
+  const image = new Uint8Array(g.sectors * SECTOR);
+  const rootSectors = (g.rootEntries * 32) / SECTOR;
+  const fatStart = g.reserved;
+  const rootStart = fatStart + g.fats * g.spf;
+  const dataStart = rootStart + rootSectors;
+  const clusterBytes = g.spc * SECTOR;
+  const clusters = Math.floor((g.sectors - dataStart) / g.spc);
+  const fat = new Uint16Array(clusters + 2);
+  fat[0] = 0xf00 | g.media;
+  fat[1] = 0xfff;
+  let nextCluster = 2;
+  const date = ((stamp.year - 1980) << 9) | (stamp.month << 5) | stamp.day;
+  const time = (stamp.hour << 11) | (stamp.minute << 5);
+
+  function allocate(bytes) {
+    const count = Math.max(1, Math.ceil(bytes / clusterBytes));
+    if (nextCluster + count > clusters + 2) {
+      throw new Error('The files do not fit on a 720 KB floppy.');
+    }
+    const first = nextCluster;
+    for (let i = 0; i < count; i++) fat[first + i] = i === count - 1 ? 0xfff : first + i + 1;
+    nextCluster += count;
+    return { first, count };
+  }
+
+  function clusterOffset(c) {
+    return (dataStart + (c - 2) * g.spc) * SECTOR;
+  }
+
+  function dirEntry(buf, off, name83, attr, cluster, size) {
+    for (let i = 0; i < 11; i++) buf[off + i] = name83.charCodeAt(i);
+    buf[off + 11] = attr;
+    writeLE16(buf, off + 22, time);
+    writeLE16(buf, off + 24, date);
+    writeLE16(buf, off + 26, cluster);
+    writeLE32(buf, off + 28, size);
+  }
+
+  // Lay out a directory's entries into `buf` and recurse into subfolders.
+  function writeDir(node, buf, selfCluster, parentCluster, isRoot) {
+    let slot = 0;
+    const put = (name83, attr, cluster, size) => {
+      if ((slot + 1) * 32 > buf.length) throw new Error('Too many entries in one folder.');
+      dirEntry(buf, slot * 32, name83, attr, cluster, size);
+      slot++;
+    };
+    if (isRoot && label) put(shortName(label).replace('.', ''), 0x08, 0, 0);
+    if (!isRoot) {
+      put('.          ', 0x10, selfCluster, 0);
+      put('..         ', 0x10, parentCluster, 0);
+    }
+    for (const child of sortedChildren(node)) {
+      if (child.children) {
+        const entries = child.children.size + 2;
+        const alloc = allocate(entries * 32);
+        const sub = new Uint8Array(alloc.count * clusterBytes);
+        put(shortName(child.name), 0x10, alloc.first, 0);
+        writeDir(child, sub, alloc.first, isRoot ? 0 : selfCluster, false);
+        for (let i = 0; i < alloc.count; i++) {
+          image.set(sub.subarray(i * clusterBytes, (i + 1) * clusterBytes), clusterOffset(alloc.first + i));
+        }
+      } else {
+        let first = 0;
+        if (child.data.length > 0) {
+          const alloc = allocate(child.data.length);
+          first = alloc.first;
+          for (let i = 0; i < alloc.count; i++) {
+            image.set(child.data.subarray(i * clusterBytes, (i + 1) * clusterBytes), clusterOffset(first + i));
+          }
+        }
+        put(shortName(child.name), 0x00, first, child.data.length);
+      }
+    }
+  }
+
+  const rootBuf = new Uint8Array(rootSectors * SECTOR);
+  writeDir(buildTree(files), rootBuf, 0, 0, true);
+  image.set(rootBuf, rootStart * SECTOR);
+
+  // Boot sector: bra.s, loader name, serial, BPB.
+  const boot = image.subarray(0, SECTOR);
+  boot[0] = 0x60;
+  boot[1] = 0x38;
+  for (let i = 0; i < 6; i++) boot[2 + i] = 'MAGIC '.charCodeAt(i);
+  boot[8] = serial & 0xff;
+  boot[9] = (serial >>> 8) & 0xff;
+  boot[10] = (serial >>> 16) & 0xff;
+  writeLE16(boot, 11, SECTOR);
+  boot[13] = g.spc;
+  writeLE16(boot, 14, g.reserved);
+  boot[16] = g.fats;
+  writeLE16(boot, 17, g.rootEntries);
+  writeLE16(boot, 19, g.sectors);
+  boot[21] = g.media;
+  writeLE16(boot, 22, g.spf);
+  writeLE16(boot, 24, g.spt);
+  writeLE16(boot, 26, g.heads);
+  writeLE16(boot, 28, 0);
+  // A boot sector whose big-endian word sum is $1234 is executed by TOS.
+  let sum = 0;
+  for (let i = 0; i < SECTOR; i += 2) sum = (sum + ((boot[i] << 8) | boot[i + 1])) & 0xffff;
+  if (sum === 0x1234) {
+    boot[SECTOR - 1] ^= 0x01;
+    sum = (sum + (boot[SECTOR - 1] & 1 ? 1 : -1)) & 0xffff;
+  }
+
+  // FAT12: two entries per three bytes, both copies identical.
+  const fatBytes = new Uint8Array(g.spf * SECTOR);
+  for (let c = 0; c < fat.length; c += 2) {
+    const a = fat[c];
+    const b = c + 1 < fat.length ? fat[c + 1] : 0;
+    const o = (c * 3) / 2;
+    fatBytes[o] = a & 0xff;
+    fatBytes[o + 1] = ((a >>> 8) & 0x0f) | ((b & 0x0f) << 4);
+    fatBytes[o + 2] = (b >>> 4) & 0xff;
+  }
+  for (let i = 0; i < g.fats; i++) image.set(fatBytes, (fatStart + i * g.spf) * SECTOR);
+
+  return {
+    image,
+    freeBytes: (clusters + 2 - nextCluster) * clusterBytes,
+    layout: { ...g, sectorBytes: SECTOR, clusters, dataStart, bootChecksum: sum },
+  };
+}
+
+// ----- magic-rom.js -----
+// Turn a MagiC kernel (MAGIC.RAM) into a ROM image that runs in place.
+//
+// MAGIC.RAM is a GEMDOS executable whose TEXT starts with a TOS-style OS
+// header, linked at address 0 and relocated by MAGXBOOT. Here the kernel is
+// relocated to the ROM base instead, so its own header becomes the ROM
+// header, and the boot stub (stub/romboot.s) is appended after it. The
+// header's reset vector is pointed at the stub, which configures memory as
+// TOS would before MAGXBOOT runs, then jumps into the kernel.
+const ROM_BASE = 0xe00000;
+const ROM_SIZE = 256 * 1024;
+const ROM_FILL = 0xff;
+
+const PRG_MAGIC = 0x601a;
+const OS_ENTRY = 0x602e;        // bra.b over the 0x30-byte OS header
+const GEM_MAGIC = 0x87654321;
+const MAGX_ID = 0x4d414758;     // 'MAGX'
+
+// cmpi.l #$31415926,resvalid / bne.w : the kernel's reset path jumps through
+// resvector when resvalid is set. MAGXBOOT's MODIFY step and MAGICROM turn
+// the bne into a bra, so a resvector left by an earlier RAM-loaded MagiC
+// cannot take over the ROM kernel.
+const RESVALID_CHECK = [0x0c, 0xb8, 0x31, 0x41, 0x59, 0x26, 0x04, 0x26, 0x66, 0x00];
+
+function readBE16(buf, off) {
+  return (buf[off] << 8) | buf[off + 1];
+}
+
+function readBE32(buf, off) {
+  return ((buf[off] << 24) | (buf[off + 1] << 16) | (buf[off + 2] << 8) | buf[off + 3]) >>> 0;
+}
+
+function writeBE32(buf, off, v) {
+  buf[off] = (v >>> 24) & 0xff;
+  buf[off + 1] = (v >>> 16) & 0xff;
+  buf[off + 2] = (v >>> 8) & 0xff;
+  buf[off + 3] = v & 0xff;
+}
+function parseMagicRam(file) {
+  if (file.length < 0x1c + 0x30 || readBE16(file, 0) !== PRG_MAGIC) {
+    throw new Error('Not a GEMDOS executable (no $601A header).');
+  }
+  const textLen = readBE32(file, 2);
+  const dataLen = readBE32(file, 6);
+  const bssLen = readBE32(file, 10);
+  const symLen = readBE32(file, 14);
+  const segLen = textLen + dataLen;
+  if (0x1c + segLen + symLen > file.length) {
+    throw new Error('Truncated executable: TEXT+DATA run past the end of the file.');
+  }
+  const seg = file.subarray(0x1c, 0x1c + segLen);
+  if (readBE16(seg, 0) !== OS_ENTRY) {
+    throw new Error('No OS header at the start of TEXT: this is not a MagiC kernel.');
+  }
+  const gemBlock = readBE32(seg, 0x14);
+  if (gemBlock + 16 > segLen || readBE32(seg, gemBlock) !== GEM_MAGIC
+      || readBE32(seg, gemBlock + 12) !== MAGX_ID) {
+    throw new Error('GEM parameter block with the MAGX signature not found: not a MagiC kernel.');
+  }
+
+  // GEMDOS relocation stream: first offset as a long, then byte deltas,
+  // 1 = skip 254 bytes, 0 = end. A first long of 0 means no fixups.
+  const relocs = [];
+  let p = 0x1c + segLen + symLen;
+  if (p + 4 <= file.length) {
+    let off = readBE32(file, p);
+    p += 4;
+    if (off !== 0) {
+      relocs.push(off);
+      while (p < file.length) {
+        const c = file[p++];
+        if (c === 0) break;
+        if (c === 1) {
+          off += 254;
+        } else {
+          off += c;
+          relocs.push(off);
+        }
+      }
+    }
+  }
+  for (const r of relocs) {
+    if (r & 1 || r + 4 > segLen) {
+      throw new Error(`Bad relocation offset $${r.toString(16)}.`);
+    }
+  }
+
+  return {
+    textLen, dataLen, bssLen, segLen, seg, relocs, gemBlock,
+    osEnd: readBE32(seg, 0x0c),
+    aesEnd: readBE32(seg, gemBlock + 4),
+    version: readBE16(seg, 2),
+    entry: readBE32(seg, 4),
+    osDate: readBE32(seg, 0x18),
+    osConf: readBE16(seg, 0x1c),
+  };
+}
+
+function findAll(buf, pattern) {
+  const hits = [];
+  outer:
+  for (let i = 0; i + pattern.length <= buf.length; i += 2) {
+    for (let j = 0; j < pattern.length; j++) {
+      if (buf[i + j] !== pattern[j]) continue outer;
+    }
+    hits.push(i);
+  }
+  return hits;
+}
+
+// Sum of longs from the kernel start while below the kernel end, exactly as
+// MAGXBOOT and the kernel's crash handler compute it (a trailing partial long
+// includes the bytes that follow the kernel).
+function kernelChecksum(rom, len) {
+  let sum = 0;
+  for (let off = 0; off < len; off += 4) {
+    sum = (sum + readBE32(rom, off)) >>> 0;
+  }
+  return sum;
+}
+
+// Word in the GEM parameter block holding the drive the kernel loads its
+// system files from (VDI drivers in \GEMSYS, MAGX.INF, the desktop):
+// 0 = A:, 2 = C:. The kernel ships with C:.
+const GEM_SYSDRIVE = 0x78;
+function buildMagicRom(magicRam, stub, options = {}) {
+  const sysDrive = options.sysDrive ?? 2;
+  if (!Number.isInteger(sysDrive) || sysDrive < 0 || sysDrive > 25) {
+    throw new Error('System drive must be a drive number from 0 (A:) to 25 (Z:).');
+  }
+  const k = parseMagicRam(magicRam);
+  const stubOff = (k.segLen + 15) & ~15;
+  if (stubOff + stub.length > ROM_SIZE) {
+    throw new Error(`Kernel too large: ${k.segLen} bytes plus a ${stub.length}-byte boot stub `
+      + `do not fit in ${ROM_SIZE / 1024} KB.`);
+  }
+
+  const rom = new Uint8Array(ROM_SIZE).fill(ROM_FILL);
+  rom.set(k.seg, 0);
+  for (const r of k.relocs) {
+    writeBE32(rom, r, (readBE32(rom, r) + ROM_BASE) >>> 0);
+  }
+
+  const hits = findAll(rom.subarray(0, k.segLen), RESVALID_CHECK);
+  if (hits.length !== 1) {
+    throw new Error(`Expected one resvalid check in the kernel, found ${hits.length}.`);
+  }
+  rom[hits[0] + 8] = 0x60;
+
+  const gemBlock = k.gemBlock;
+  const shippedSysDrive = readBE16(rom, gemBlock + GEM_SYSDRIVE);
+  rom[gemBlock + GEM_SYSDRIVE] = 0;
+  rom[gemBlock + GEM_SYSDRIVE + 1] = sysDrive;
+
+  rom.set(stub, stubOff);
+  const kernelGo = readBE32(rom, 4);
+  writeBE32(rom, 4, ROM_BASE + stubOff);
+  writeBE32(rom, stubOff + stub.length - 4, kernelGo);
+  // The checksum covers the kernel only; compute it after the stub is in
+  // place in case the kernel length is not a multiple of four.
+  const sum = kernelChecksum(rom, k.segLen);
+  writeBE32(rom, stubOff + stub.length - 8, sum);
+
+  return {
+    rom,
+    info: {
+      kernelBytes: k.segLen,
+      textBytes: k.textLen,
+      dataBytes: k.dataLen,
+      bssBytes: k.bssLen,
+      relocations: k.relocs.length,
+      gemBlock: ROM_BASE + gemBlock,
+      osEnd: k.osEnd,
+      aesEnd: k.aesEnd,
+      stubBytes: stub.length,
+      shippedSysDrive,
+      version: k.version,
+      osDate: k.osDate,
+      osConf: k.osConf,
+      stubAt: ROM_BASE + stubOff,
+      kernelEntry: kernelGo,
+      freeBytes: ROM_SIZE - stubOff - stub.length,
+      checksum: sum,
+      resvalidPatchAt: ROM_BASE + hits[0] + 8,
+      sysDrive,
+    },
+  };
+}
+
+// ----- rootfs.js -----
+// From an Atari MagiC release (the MAGIC.A tree of Atari-MagiC-*.zip),
+// produce the localised kernel and the file sets that go with the ROM:
+// a minimal boot floppy (system drive A:) and the full hard disk tree
+// (system drive C:).
+const LANGUAGES = [
+  { code: 'EN', name: 'English' },
+  { code: 'DE', name: 'Deutsch' },
+  { code: 'FR', name: 'Fran\u00e7ais' },
+];
+
+// What LANG/<code>.BAT copies over the root tree. The German help files
+// are used for every language: no translation exists.
+const LOCALISE_RULES = [
+  { dir: 'EXTRAS', ext: ['INF', 'ACC'] },
+  { dir: 'EXTRAS/AES_LUPE', ext: ['TXT'] },
+  { dir: 'GEMSYS/GEMDESK', ext: ['RSC', 'TXT', 'TOS'] },
+  { dir: 'GEMSYS/GEMDESK/HELP', ext: ['HLP'], from: 'DE' },
+  { dir: 'GEMSYS/MAGIC/XTENSION', ext: ['SYS', 'SLB'] },
+];
+
+// Files that only make sense for a RAM-loaded MagiC, left out next to a ROM.
+const RAM_ONLY = ['AUTO/MAGXBOOT.TOS', 'AUTO/MAGXBOOT.PRG', 'MAGIC.RAM'];
+
+// The boot floppy: what MagiC needs to reach its desktop on ST/STE video
+// (2, 4 and 16 colour drivers), plus the small desktop tools.
+const FLOPPY_FILES = [
+  'MAGX.INF',
+  'GEMSYS/MFA2.SYS', 'GEMSYS/MFA4.SYS', 'GEMSYS/MFA16.SYS',
+  'GEMSYS/OFF002.OSD', 'GEMSYS/OFF004IP.OSD', 'GEMSYS/OFF016IP.OSD',
+  'GEMSYS/MAGIC/XTENSION/*.SLB', 'GEMSYS/MAGIC/XTENSION/*.SYS',
+  'GEMSYS/MAGIC/XTENSION/*.RSC', 'GEMSYS/MAGIC/XTENSION/*.DEV',
+  'GEMSYS/MAGIC/START/*',
+  'GEMSYS/GEMDESK/MAGXDESK.APP', 'GEMSYS/GEMDESK/MAGXDESK.RSC', 'GEMSYS/GEMDESK/MAGXDESL.RSC',
+  'GEMSYS/GEMDESK/RSC/MAGICICN.RSC',
+  'GEMSYS/GEMDESK/VT52.PRG', 'GEMSYS/GEMDESK/VT52.RSC', 'GEMSYS/GEMDESK/MCMD.TOS',
+  'GEMSYS/GEMDESK/CHGRES.PRG', 'GEMSYS/GEMDESK/CHGRES.RSC',
+  'GEMSYS/GEMDESK/SHUTDOWN.PRG', 'GEMSYS/GEMDESK/SHUTDOWN.INF',
+  'GEMSYS/GEMDESK/MGEDIT.APP', 'GEMSYS/GEMDESK/MGEDIT.RSC',
+  'GEMSYS/GEMDESK/MGVIEW.APP',
+  'GEMSYS/GEMDESK/MGCOPY.APP', 'GEMSYS/GEMDESK/MGCOPY.RSC',
+  'GEMSYS/GEMDESK/MGFORMAT.PRG', 'GEMSYS/GEMDESK/MGFORMAT.RSC',
+  'GEMSYS/GEMDESK/MGSEARCH.APP', 'GEMSYS/GEMDESK/MGSEARCH.RSC',
+  'GEMSYS/GEMDESK/PAT/16/*',
+  'GEMSYS/GEMSCRAP/*',
+  'GEMSYS/HOME/*',
+];
+
+function extOf(path) {
+  const name = path.slice(path.lastIndexOf('/') + 1);
+  const dot = name.lastIndexOf('.');
+  return dot < 0 ? '' : name.slice(dot + 1).toUpperCase();
+}
+
+function dirOf(path) {
+  const slash = path.lastIndexOf('/');
+  return slash < 0 ? '' : path.slice(0, slash);
+}
+
+// Map keys from readZip() -> Map of paths relative to MAGIC.A, upper case.
+function releaseTree(zipFiles) {
+  let prefix = null;
+  for (const path of zipFiles.keys()) {
+    const m = /^(.*?)LANG\/EN\/MAGIC\.RAM$/i.exec(path);
+    if (m) {
+      prefix = m[1];
+      break;
+    }
+  }
+  if (prefix === null) {
+    throw new Error('This does not look like an Atari MagiC release: LANG/EN/MAGIC.RAM is missing.');
+  }
+  const tree = new Map();
+  for (const [path, data] of zipFiles) {
+    if (!path.toUpperCase().startsWith(prefix.toUpperCase())) continue;
+    const rel = path.slice(prefix.length).toUpperCase();
+    if (rel.endsWith('.DS_STORE') || rel.startsWith('__MACOSX/')) continue;
+    tree.set(rel, data);
+  }
+  return tree;
+}
+function kernelFor(tree, lang) {
+  const kernel = tree.get(`LANG/${lang}/MAGIC.RAM`);
+  if (!kernel) throw new Error(`The release has no ${lang} kernel (LANG/${lang}/MAGIC.RAM).`);
+  return kernel;
+}
+
+// The root tree as LANG/<lang>.BAT leaves it, without LANG/ and the files
+// a ROM does not need. `report`, when given, receives what each rule did.
+function localisedTree(tree, lang, report = null) {
+  const out = new Map();
+  const dropped = [];
+  for (const [path, data] of tree) {
+    if (path.startsWith('LANG/')) continue;
+    if (RAM_ONLY.includes(path)) {
+      dropped.push(path);
+      continue;
+    }
+    out.set(path, data);
+  }
+  const rules = [];
+  for (const rule of LOCALISE_RULES) {
+    const from = rule.from || lang;
+    const src = `LANG/${from}/${rule.dir}/`;
+    let count = 0;
+    for (const [path, data] of tree) {
+      if (!path.startsWith(src) || path.slice(src.length).includes('/')) continue;
+      if (!rule.ext.includes(extOf(path))) continue;
+      out.set(rule.dir + '/' + path.slice(src.length), data);
+      count++;
+    }
+    rules.push({ dir: rule.dir, ext: rule.ext, from, count });
+  }
+  if (report) Object.assign(report, { rules, dropped });
+  return out;
+}
+
+function matches(pattern, path) {
+  if (pattern.endsWith('/*')) {
+    return dirOf(path) === pattern.slice(0, -2);
+  }
+  if (pattern.includes('*.')) {
+    const [dir, ext] = pattern.split('/*.');
+    return dirOf(path) === dir && extOf(path) === ext;
+  }
+  return pattern === path;
+}
+
+// Point every C:\ path in MAGX.INF at another drive (keeps CR/LF).
+function retargetInf(data, drive) {
+  const text = new TextDecoder('latin1').decode(data);
+  const out = text.replace(/\b[Cc]:\\/g, `${drive}:\\`);
+  return Uint8Array.from(out, (ch) => ch.charCodeAt(0));
+}
+function countDrivePaths(data, drive) {
+  const text = new TextDecoder('latin1').decode(data);
+  return (text.match(new RegExp(`\\b${drive}:\\\\`, 'gi')) || []).length;
+}
+
+function sorted(map) {
+  return [...map.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([path, data]) => ({ path, data }));
+}
+function floppyFiles(localised) {
+  const picked = new Map();
+  for (const [path, data] of localised) {
+    if (FLOPPY_FILES.some((p) => matches(p, path))) picked.set(path, data);
+  }
+  if (!picked.has('MAGX.INF')) throw new Error('The release has no MAGX.INF.');
+  picked.set('MAGX.INF', retargetInf(picked.get('MAGX.INF'), 'A'));
+  return sorted(picked);
+}
+function hardDiskFiles(localised) {
+  return sorted(localised);
+}
+
+// ----- romboot-stub.js -----
+// AUTOGENERATED by build.mjs from src/stubs/romboot.bin, do not hand-edit.
+// To update: edit stub/romboot.s, run `npm run stub`, then `npm run build`.
+const ROMBOOT = new Uint8Array([
+  0x46, 0xFC, 0x27, 0x00, 0x4E, 0x70, 0x0C, 0xB9, 0xFA, 0x52, 0x23, 0x5F, 0x00, 0xFA, 0x00, 0x00,
+  0x66, 0x0A, 0x4D, 0xFA, 0x00, 0x08, 0x4E, 0xF9, 0x00, 0xFA, 0x00, 0x04, 0x41, 0xF8, 0x88, 0x00,
+  0x10, 0xBC, 0x00, 0x07, 0x11, 0x7C, 0x00, 0xC0, 0x00, 0x02, 0x10, 0xBC, 0x00, 0x0E, 0x11, 0x7C,
+  0x00, 0x07, 0x00, 0x02, 0x0C, 0xB8, 0x75, 0x20, 0x19, 0xF3, 0x04, 0x20, 0x66, 0x24, 0x0C, 0xB8,
+  0x23, 0x76, 0x98, 0xAA, 0x04, 0x3A, 0x66, 0x1A, 0x0C, 0xB8, 0x55, 0x55, 0xAA, 0xAA, 0x05, 0x1A,
+  0x66, 0x10, 0x1C, 0x38, 0x04, 0x24, 0x2A, 0x38, 0x04, 0x2E, 0x11, 0xC6, 0x80, 0x01, 0x60, 0x00,
+  0x01, 0x12, 0x11, 0xFC, 0x00, 0x0A, 0x80, 0x01, 0x30, 0x7C, 0x00, 0x08, 0x43, 0xF9, 0x00, 0x20,
+  0x00, 0x08, 0x70, 0x00, 0x30, 0xC0, 0x32, 0xC0, 0xD0, 0x7C, 0xFA, 0x54, 0xB1, 0xFC, 0x00, 0x00,
+  0x02, 0x00, 0x66, 0xF0, 0x22, 0x3C, 0x00, 0x20, 0x00, 0x00, 0x7A, 0x00, 0x7C, 0x00, 0xE4, 0x4E,
+  0x28, 0x3C, 0x00, 0x02, 0x00, 0x00, 0x20, 0x7C, 0x00, 0x04, 0x00, 0x08, 0x4B, 0xFA, 0x00, 0x06,
+  0x60, 0x00, 0x00, 0xBA, 0x67, 0x00, 0x00, 0x54, 0x30, 0x7C, 0x02, 0x08, 0x4B, 0xFA, 0x00, 0x06,
+  0x60, 0x00, 0x00, 0xAA, 0x67, 0x00, 0x00, 0x44, 0x28, 0x3C, 0x00, 0x08, 0x00, 0x00, 0x20, 0x7C,
+  0x00, 0x08, 0x00, 0x08, 0x4B, 0xFA, 0x00, 0x06, 0x60, 0x00, 0x00, 0x92, 0x67, 0x00, 0x00, 0x2A,
+  0x30, 0x7C, 0x04, 0x08, 0x4B, 0xFA, 0x00, 0x06, 0x60, 0x00, 0x00, 0x82, 0x67, 0x00, 0x00, 0x1A,
+  0x30, 0x7C, 0x00, 0x08, 0x4B, 0xFA, 0x00, 0x08, 0x78, 0x00, 0x60, 0x00, 0x00, 0x70, 0x66, 0x0A,
+  0x28, 0x3C, 0x00, 0x20, 0x00, 0x00, 0x58, 0x46, 0x58, 0x46, 0xDA, 0x84, 0x92, 0xBC, 0x00, 0x20,
+  0x00, 0x00, 0x67, 0x00, 0xFF, 0x8A, 0x11, 0xC6, 0x80, 0x01, 0x20, 0x3C, 0xFF, 0x00, 0x55, 0xAA,
+  0x20, 0x45, 0x59, 0x88, 0x20, 0x80, 0xB0, 0x90, 0x67, 0x08, 0x9A, 0xBC, 0x00, 0x08, 0x00, 0x00,
+  0x60, 0xEE, 0x41, 0xF8, 0x04, 0x00, 0x22, 0x7C, 0x00, 0x01, 0x00, 0x00, 0x70, 0x00, 0x20, 0xC0,
+  0x20, 0xC0, 0x20, 0xC0, 0x20, 0xC0, 0xB1, 0xC9, 0x65, 0xF4, 0x11, 0xC6, 0x04, 0x24, 0x21, 0xC5,
+  0x04, 0x2E, 0x21, 0xFC, 0x75, 0x20, 0x19, 0xF3, 0x04, 0x20, 0x21, 0xFC, 0x23, 0x76, 0x98, 0xAA,
+  0x04, 0x3A, 0x21, 0xFC, 0x55, 0x55, 0xAA, 0xAA, 0x05, 0x1A, 0x60, 0x16, 0xD1, 0xC1, 0x70, 0x00,
+  0x43, 0xE8, 0x01, 0xF8, 0xB0, 0x58, 0x66, 0x08, 0xD0, 0x7C, 0xFA, 0x54, 0xB3, 0xC8, 0x66, 0xF4,
+  0x4E, 0xD5, 0x21, 0xFA, 0x00, 0x10, 0x04, 0x86, 0x42, 0xB8, 0x04, 0xBA, 0x20, 0x7A, 0x00, 0x0A,
+  0x4E, 0xD0, 0x4E, 0x71, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+]);
+
+// ----- log-format.js -----
+// Rendering of the build log. package.js emits structured entries; the page
+// turns them into coloured HTML (formatLogHtml) and tools/mkall.mjs into
+// terminal text (formatLogText), so both show the same narration.
+//
+// Entry kinds:
+//   { kind: 'start', text }                  build banner
+//   { kind: 'step', n, title, at }           numbered step, at = ms since start
+//   { kind: 'say', text }                    explanation paragraph
+//   { kind: 'item', text }                   bullet
+//   { kind: 'table', headers, rows, align }  align: 'l' | 'r' per column
+//   { kind: 'info' | 'ok' | 'error', text, at }
+
+// Tokens worth a colour: quoted strings, $hex, paths and file names, sizes.
+const TOKEN = new RegExp([
+  '("[^"]*")',
+  '(\\$[0-9A-F]{2,}\\b)',
+  '((?:[A-Z]:)?\\\\?(?:[A-Za-z0-9_*?.{},-]+\\\\)+[A-Za-z0-9_*?.{},-]*'
+    + '|\\b[A-Z][A-Z0-9_]*(?:\\/[A-Za-z0-9_*.{},-]+)+'
+    + '|\\b[A-Za-z0-9_*-]+\\.(?:RAM|TOS|PRG|APP|SYS|OSD|INF|RSC|SLB|ACC|BAT|HLP|TXT|DEV|ST|st|img|zip|s)\\b)',
+  '(\\b\\d[\\d,.]*\\s?(?:bytes|KB|MB|ms|s)\\b|\\b\\d{1,3}(?:,\\d{3})+\\b)',
+].join('|'), 'g');
+const TOKEN_KIND = ['str', 'hex', 'file', 'num'];
+
+function tokens(text) {
+  const out = [];
+  let last = 0;
+  for (const m of text.matchAll(TOKEN)) {
+    if (m.index > last) out.push({ text: text.slice(last, m.index) });
+    const group = m.slice(1).findIndex((g) => g !== undefined);
+    out.push({ text: m[0], kind: TOKEN_KIND[group] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ text: text.slice(last) });
+  return out;
+}
+function formatElapsed(ms) {
+  return `+${(ms / 1000).toFixed(3)} s`;
+}
+
+// ----- HTML -----
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function richHtml(text) {
+  return tokens(String(text)).map((t) => (t.kind ? `<span class="lg-${t.kind}">${esc(t.text)}</span>` : esc(t.text))).join('');
+}
+function formatLogHtml(e) {
+  switch (e.kind) {
+    case 'start':
+      return `<div class="lg-start">${richHtml(e.text)}</div>`;
+    case 'step':
+      return `<div class="lg-step"><span class="lg-time">${formatElapsed(e.at)}</span>`
+        + `<span class="lg-n">${e.n}</span>${esc(e.title)}</div>`;
+    case 'say':
+      return `<div class="lg-say">${richHtml(e.text)}</div>`;
+    case 'item':
+      return `<div class="lg-item"><span class="lg-bullet">&#9656;</span>${richHtml(e.text)}</div>`;
+    case 'table': {
+      const align = (i) => ((e.align || [])[i] === 'r' ? ' class="r"' : '');
+      const head = e.headers.map((h, i) => `<th${align(i)}>${esc(h)}</th>`).join('');
+      const body = e.rows.map((r) => `<tr>${r.map((c, i) => `<td${align(i)}>${richHtml(c)}</td>`).join('')}</tr>`).join('');
+      return `<table class="lg-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+    }
+    default: {
+      const time = e.at !== undefined ? `<span class="lg-time">${formatElapsed(e.at)}</span>` : '';
+      return `<div class="lg-${e.kind}">${time}${richHtml(e.text)}</div>`;
+    }
+  }
+}
+
+// ----- terminal -----
+
+const ANSI = {
+  str: '\x1b[35m', hex: '\x1b[33m', file: '\x1b[32m', num: '\x1b[36m',
+  time: '\x1b[2;36m', step: '\x1b[1;93m', dim: '\x1b[2m', ok: '\x1b[1;32m', error: '\x1b[1;31m',
+  start: '\x1b[1;97m', bullet: '\x1b[33m', reset: '\x1b[0m',
+};
+
+function paint(color, text, on) {
+  return on ? `${ANSI[color]}${text}${ANSI.reset}` : text;
+}
+
+function richText(text, on) {
+  return tokens(String(text)).map((t) => (t.kind ? paint(t.kind, t.text, on) : t.text)).join('');
+}
+function formatLogText(e, color = false) {
+  switch (e.kind) {
+    case 'start':
+      return paint('start', e.text, color);
+    case 'step':
+      return `\n${paint('time', formatElapsed(e.at).padStart(10), color)}  ${paint('step', `${e.n}. ${e.title}`, color)}`;
+    case 'say':
+      return `            ${richText(e.text, color)}`;
+    case 'item':
+      return `            ${paint('bullet', '>', color)} ${richText(e.text, color)}`;
+    case 'table': {
+      const widths = e.headers.map((h, i) => Math.max(h.length, ...e.rows.map((r) => String(r[i]).length)));
+      const cell = (c, i) => {
+        const s = String(c);
+        const pad = (e.align || [])[i] === 'r' ? s.padStart(widths[i]) : s.padEnd(widths[i]);
+        return richText(pad, color);
+      };
+      const lines = [e.headers.map((h, i) => paint('dim', (e.align || [])[i] === 'r' ? h.padStart(widths[i]) : h.padEnd(widths[i]), color)).join('   ')];
+      lines.push(paint('dim', widths.map((w) => '-'.repeat(w)).join('   '), color));
+      for (const r of e.rows) lines.push(r.map(cell).join('   '));
+      return lines.map((l) => `            ${l}`).join('\n');
+    }
+    default: {
+      const time = e.at !== undefined ? `${paint('time', formatElapsed(e.at).padStart(10), color)}  ` : '';
+      return `${time}${paint(e.kind === 'info' ? 'dim' : e.kind, e.text, color)}`;
+    }
+  }
+}
+
+// ----- package.js -----
+// One build: a MagiC release ZIP in, a ROM image plus the files that boot
+// it out. Shared by the web page and tools/mkall.mjs.
+//
+// The log is meant to be read: every step says what it does and why, so
+// the knowledge behind the ROM (how MagiC boots, what the ROM changes) is
+// kept with the tool that applies it. Entries are structured; see
+// log-format.js for how they are shown.
+const TARGETS = {
+  floppy: { sysDrive: 0, suffix: 'floppy', label: 'floppy, system on A:' },
+  harddisk: { sysDrive: 2, suffix: 'harddisk', label: 'hard disk, system on C:' },
+};
+
+const hex = (v, digits = 0) => '$' + (v >>> 0).toString(16).toUpperCase().padStart(digits, '0');
+const drive = (n) => String.fromCharCode(65 + n) + ':';
+const bytes = (n) => `${n.toLocaleString('en-US')} bytes`;
+const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+function be16(b, o) {
+  return (b[o] << 8) | b[o + 1];
+}
+
+// MagiC version from the AES variables (word at +$30 of the GEM block).
+function magicVersion(k) {
+  const v = be16(k.seg, k.gemBlock + 0x30);
+  return `${(v >> 8).toString(16)}.${(v & 0xff).toString(16).padStart(2, '0')}`;
+}
+
+// GEMDOS-format date at OS header +$1E: the kernel build date, used for
+// every file timestamp so a build is reproducible.
+function kernelStamp(k) {
+  const d = be16(k.seg, 0x1e);
+  return { year: 1980 + (d >> 9), month: (d >> 5) & 15, day: d & 31, hour: 12, minute: 0 };
+}
+
+// Numbered steps with their start time; the durations go in the summary.
+function narrator(log, t0) {
+  const steps = [];
+  const at = () => now() - t0;
+  return {
+    at,
+    steps,
+    start(text) {
+      log({ kind: 'start', text });
+    },
+    step(title) {
+      const t = at();
+      if (steps.length) steps[steps.length - 1].ms = t - steps[steps.length - 1].at;
+      steps.push({ n: steps.length + 1, title, at: t });
+      log({ kind: 'step', n: steps.length, title, at: t });
+    },
+    say(text) {
+      log({ kind: 'say', text });
+    },
+    item(text) {
+      log({ kind: 'item', text });
+    },
+    table(headers, rows, align) {
+      log({ kind: 'table', headers, rows, align });
+    },
+  };
+}
+
+// t0: when the build started (performance.now() clock), so time spent
+// before buildPackage (fetching the release) counts too.
+async function buildPackage(zipBytes, { lang, target, stub, log = () => {}, t0 = now() }) {
+  const t = TARGETS[target];
+  if (!t) throw new Error(`Unknown target "${target}".`);
+  const n = narrator(log, t0);
+  n.start(`MagiC ROM build, ${lang}, ${t.label}, started ${new Date().toLocaleString('en-GB')}`);
+
+  // ---------------------------------------------------------------------
+  n.step('Read the MagiC release');
+  const zipFiles = await readZip(zipBytes);
+  const tree = releaseTree(zipFiles);
+  n.say(`The archive holds ${zipFiles.size} files (${bytes(zipBytes.length)}). Its MAGIC.A folder is the root of a MagiC boot drive as Andreas Kromke ships it:`);
+  n.table(['Folder', 'What it holds'], [
+    ['GEMSYS', 'screen drivers, the MAGXDESK desktop, shared libraries, desktop patterns'],
+    ['AUTO', 'MAGXBOOT.TOS (the loader of the RAM version) and the accessories'],
+    ['BIN, EXTRAS', 'command line tools, extra programs and documentation'],
+    ['LANG/DE, LANG/EN, LANG/FR', 'a kernel (MAGIC.RAM) and the translated files for each language'],
+  ]);
+
+  // ---------------------------------------------------------------------
+  n.step(`Take the ${lang} kernel, LANG/${lang}/MAGIC.RAM`);
+  const kernel = kernelFor(tree, lang);
+  const k = parseMagicRam(kernel);
+  const version = magicVersion(k);
+  const stamp = kernelStamp(k);
+  const date = `${stamp.year}-${String(stamp.month).padStart(2, '0')}-${String(stamp.day).padStart(2, '0')}`;
+  n.table(['Field', 'Value', 'Meaning'], [
+    ['MagiC version', version, 'from the AES variables, GEM block + $30'],
+    ['Build date', date, 'GEMDOS date in the OS header at +$1E'],
+    ['Format', '$601A', 'GEMDOS executable'],
+    ['TEXT', bytes(k.textLen), 'code, starting with a TOS-style OS header'],
+    ['DATA', bytes(k.dataLen), 'tables and strings'],
+    ['BSS', bytes(k.bssLen), 'empty: no variables inside the kernel image'],
+    ['Relocations', k.relocs.length.toLocaleString('en-US'), 'longs that hold an address'],
+    ['OS header version', hex(k.version, 4), 'at offset 2'],
+    ['Reset entry', hex(k.entry), 'syshdr_code, at offset 4'],
+    ['GEM parameter block', hex(k.gemBlock), "$87654321 ... 'MAGX': a MagiC kernel"],
+    ['End of BIOS and DOS variables', hex(k.osEnd), 'fixed area in low RAM'],
+    ['End of AES variables', hex(k.aesEnd), 'fixed area in low RAM'],
+  ], ['l', 'r', 'l']);
+  n.say('Normally TOS boots first and AUTO\\MAGXBOOT loads this file, relocates it into RAM above the OS variables and jumps to it; MagiC then replaces TOS until the next cold boot. Here the kernel runs straight from ROM: no TOS is needed and no RAM is spent on the kernel.');
+  n.say('This works because the kernel keeps all its variables at fixed addresses in low RAM and its BSS is empty, so its code and data can stay read-only.');
+
+  // ---------------------------------------------------------------------
+  n.step('Relocate the kernel to the ROM address $E00000');
+  const { rom, info } = buildMagicRom(kernel, stub, { sysDrive: t.sysDrive });
+  n.say(`The kernel is linked at address 0. Each of its ${info.relocations.toLocaleString('en-US')} relocation entries marks a long that holds an address, and $E00000 is added to each: what MAGXBOOT does with its load address.`);
+  n.say('$E00000 is where the STE and Mega STE decode 256 KB of ROM; an ST or Mega ST needs a 256 KB decoder for it. The kernel does not fit in the 192 KB ROM space at $FC0000.');
+  n.say('The kernel\'s own OS header becomes the ROM header: os_beg = $E00000 at offset 8 and the version at offset 2 are what Hatari and TOS-aware programs check in a TOS ROM. On reset the 68000 reads its stack pointer and start address from the first 8 bytes of the ROM, mirrored at address 0, so offset 4 (the reset vector) decides where the machine starts.');
+
+  // ---------------------------------------------------------------------
+  n.step('Patch the warm reset path');
+  n.say(`At ${hex(info.resvalidPatchAt)} the kernel's reset code does "cmpi.l #$31415926,resvalid / bne": when resvalid holds that magic value, it jumps through resvector. A RAM-loaded MagiC points both at itself, so after one ran (MAGXBOOT under another TOS) a warm reset would restart that old copy instead of the ROM.`);
+  n.table(['Address', 'Before', 'After'], [[hex(info.resvalidPatchAt), '$66 bne', '$60 bra']]);
+  n.say('The same patch MAGXBOOT\'s MODIFY step and the 1996 MAGICROM converter apply.');
+
+  // ---------------------------------------------------------------------
+  n.step(`Set the system drive to ${drive(t.sysDrive)}`);
+  n.table(['Address', 'Shipped', 'Set to'], [[hex(info.gemBlock + 0x78), drive(info.shippedSysDrive), drive(t.sysDrive)]]);
+  n.say('The word at GEM block + $78 names the drive the VDI loads its screen drivers from (\\GEMSYS\\MFA*.SYS and the *.OSD offscreen drivers). Booted from a floppy with the shipped value, MagiC looks for C:\\GEMSYS\\*.OSD and stops with "Offscreen driver not found" (seen in Hatari).');
+  n.say('The AES reads MAGX.INF and starts the desktop from the boot drive (_bootdev), which only a hard disk driver sets to C:. Both must name the same drive.');
+  n.say(target === 'floppy'
+    ? 'Floppy target: there is no hard disk driver, so the system drive is A:.'
+    : 'Hard disk target: C:, for a hard disk driver that boots from C:.');
+
+  // ---------------------------------------------------------------------
+  n.step('Append the boot stub and point the reset vector at it');
+  n.say(`In RAM mode TOS has done the cold boot work before MAGXBOOT runs; in ROM nothing has, and the kernel does not do it itself. The stub (${bytes(info.stubBytes)}, stub/romboot.s) does it on every reset:`);
+  n.item('jumps to a diagnostic cartridge at $FA0000 if one is plugged in, as TOS does;');
+  n.item('deselects both floppy drives through port A of the sound chip;');
+  n.item('warm reset: when memvalid, memval2 and memval3 hold their magic values, puts memctrl back into the memory controller and keeps phystop;');
+  n.item('cold boot: sizes the ST/STE RAM banks by writing test patterns and looking for where they repeat (the algorithm EmuTOS uses), programs the memory controller at $FF8001, clears $400-$FFFF and sets memctrl, phystop, memvalid, memval2 and memval3;');
+  n.item(`stores the kernel checksum at $486 (os_chksum), clears the 200 Hz counter and jumps to the kernel at ${hex(info.kernelEntry)}.`);
+  n.say('The kernel address and the checksum go into the stub\'s last two longs.');
+
+  // ---------------------------------------------------------------------
+  n.step('Compute the kernel checksum');
+  n.table(['Checksum', 'Stored at', 'Copied at boot to'], [[hex(info.checksum, 8), hex(info.stubAt + info.stubBytes - 8), '$486 os_chksum']]);
+  n.say('The sum of the kernel\'s longs, as MAGXBOOT computes it for the RAM version. After a crash (bombs) the kernel sums itself again and compares with $486 to tell whether a program overwrote the OS; without the value it would always report a corrupted system.');
+  const stubEnd = info.stubAt + info.stubBytes;
+  n.say('The finished ROM:');
+  n.table(['Region', 'From', 'To', 'Size'], [
+    ['OS header + kernel TEXT', hex(ROM_BASE, 6), hex(ROM_BASE + info.textBytes - 1, 6), bytes(info.textBytes)],
+    ['Kernel DATA', hex(ROM_BASE + info.textBytes, 6), hex(ROM_BASE + info.kernelBytes - 1, 6), bytes(info.dataBytes)],
+    ['Boot stub', hex(info.stubAt, 6), hex(stubEnd - 1, 6), bytes(info.stubBytes)],
+    ['Free ($FF)', hex(stubEnd, 6), hex(ROM_BASE + ROM_SIZE - 1, 6), bytes(info.freeBytes)],
+  ], ['l', 'l', 'l', 'r']);
+
+  // ---------------------------------------------------------------------
+  n.step(`Localise the boot drive files for ${lang}`);
+  const report = {};
+  const localised = localisedTree(tree, lang, report);
+  n.say(`The copies LANG/${lang}.BAT makes on an Atari, applied here:`);
+  n.table(['Folder', 'Types', 'Files', 'From'], report.rules.map((r) => [
+    r.dir, r.ext.map((x) => `*.${x}`).join(' '), String(r.count),
+    r.from === lang ? `LANG/${r.from}` : `LANG/${r.from} (only in German)`,
+  ]), ['l', 'l', 'r', 'l']);
+  n.say(`Left out: ${report.dropped.join(', ')}, which only ${report.dropped.length === 1 ? 'loads' : 'load'} the RAM version that the ROM replaces.`);
+
+  // ---------------------------------------------------------------------
+  const base = `MagiC-${version}-${lang}-${t.suffix}`;
+  const outputs = [{ name: `${base}.img`, data: rom, kind: 'rom' }];
+  if (target === 'floppy') {
+    n.step('Build the 720 KB boot floppy');
+    const files = floppyFiles(localised);
+    const cPaths = countDrivePaths(localised.get('MAGX.INF'), 'C');
+    n.say(`${files.length} files: the part of the release MagiC needs to reach its desktop from A:`);
+    n.table(['Files', 'Purpose'], [
+      ['MFA2/MFA4/MFA16.SYS', 'screen drivers for ST high, medium and low resolution'],
+      ['OFF002/OFF004IP/OFF016IP.OSD', 'the matching offscreen drivers (the others are for graphics cards)'],
+      ['GEMSYS\\MAGIC\\XTENSION', 'shared libraries and the keyboard table'],
+      ['GEMSYS\\MAGIC\\START', 'the write-back daemon'],
+      ['GEMSYS\\GEMDESK', 'MAGXDESK and its icons, VT52 and MCMD for TOS programs, CHGRES, the MG* tools'],
+      ['GEMSYS\\HOME, GEMSCRAP', 'folders MAGX.INF names'],
+      ['MAGX.INF', `${cPaths} paths changed from C:\\ to A:\\`],
+    ]);
+    n.say('The accessories, BIN and EXTRAS do not fit on the disk.');
+    const { image, freeBytes, layout } = buildFloppy(files, { label: 'MAGIC', stamp });
+    n.say('Disk format as TOS writes it:');
+    n.table(['Field', 'Value'], [
+      ['Geometry', `${layout.sectors / layout.spt / layout.heads} tracks, ${layout.heads} sides, ${layout.spt} sectors of ${layout.sectorBytes} bytes`],
+      ['File system', `FAT12, ${layout.spc} sectors per cluster, ${layout.spf} sectors per FAT, ${layout.rootEntries} root entries`],
+      ['Media byte', hex(layout.media, 2)],
+      ['Boot sector word sum', `${hex(layout.bootChecksum, 4)}, not $1234: never executed at boot`],
+      ['File dates', `${date}, the kernel date: the same input always gives the same image`],
+      ['Free space', bytes(freeBytes)],
+    ]);
+    outputs.push({ name: `${base}.st`, data: image, kind: 'floppy' });
+  } else {
+    n.step('Pack the hard disk files');
+    const files = hardDiskFiles(localised);
+    n.say(`${files.length} files for the root of C:, the whole localised release: MAGX.INF with its C:\\ paths, the accessories in AUTO\\ACCS, the command line tools in BIN, and EXTRAS. Stored uncompressed, every entry dated ${date}.`);
+    n.say('Boot from a hard disk driver (AHDI, ICD, HDDRIVER...) so that _bootdev is C:. The clock panel in AUTO\\ACCS asks for the date on machines without a clock.');
+    outputs.push({ name: `${base}.zip`, data: writeZip(files, stamp), kind: 'zip' });
+  }
+
+  // ---------------------------------------------------------------------
+  n.step('Summary');
+  const rows = [];
+  for (const out of outputs) rows.push([out.name, bytes(out.data.length), sha256Hex(out.data).slice(0, 16)]);
+  n.table(['File', 'Size', 'SHA-256 (first 16)'], rows, ['l', 'r', 'l']);
+  const total = n.at();
+  n.steps[n.steps.length - 1].ms = total - n.steps[n.steps.length - 1].at;
+  n.say('Time spent:');
+  n.table(['Step', 'Time'], n.steps.slice(0, -1).map((s) => [`${s.n}. ${s.title}`, `${s.ms.toFixed(1)} ms`]), ['l', 'r']);
+  log({ kind: 'ok', text: `Build finished in ${total.toFixed(1)} ms.`, at: total });
+  return { outputs, info: { ...info, version, lang, target } };
+}
+
+// ----- help-content.js -----
+// Help texts for the ? icons, keyed by data-help-key. Author-controlled
+// HTML, rendered with innerHTML.
+const HELP_CONTENT = {
+  release: {
+    title: 'Step 1. MagiC release',
+    html: `
+      <p>The builder starts from an official <em>MagiC for Atari</em> release by Andreas Kromke: the
+      <code>Atari-MagiC-YYYY-MM-DD.zip</code> files in <code>MagiC/Releases/</code> of his GitLab repository.
+      A copy of the latest one is bundled with this page.</p>
+      <p>To use another release, pick <em>My own</em> and drop its ZIP. The archive must hold the
+      <code>MAGIC.A</code> tree with <code>LANG/EN</code>, <code>LANG/DE</code> and <code>LANG/FR</code>.
+      Nothing is uploaded: the file is read by your browser.</p>
+    `,
+  },
+
+  options: {
+    title: 'Step 2. Options',
+    html: `
+      <h4>Language</h4>
+      <p>Picks the kernel (<code>LANG/xx/MAGIC.RAM</code>) and localises the desktop files the same way the
+      release's <code>LANG/xx.BAT</code> does. The command line help files are German in every language,
+      as in the release.</p>
+      <h4>Boot from</h4>
+      <p>MagiC loads its screen drivers, <code>MAGX.INF</code> and its desktop from a system drive. The ROM
+      has that drive built in, so the choice here decides both the ROM and the files that go with it.</p>
+    `,
+  },
+
+  target: {
+    title: 'Boot from',
+    html: `
+      <h4>Floppy, system on A:</h4>
+      <p>You get the ROM and a 720&nbsp;KB <code>.ST</code> floppy image with the files MagiC needs to reach its
+      desktop: screen drivers for ST low, medium and high resolution, the desktop and its tools. No hard disk
+      is needed. Write the image to a floppy, or use it in a floppy emulator or in Hatari.</p>
+      <h4>Hard disk, system on C:</h4>
+      <p>You get the ROM and a ZIP with the full MagiC tree for the root of drive <code>C:</code>
+      (accessories, command line tools, extras). Your hard disk driver must boot from <code>C:</code> so that
+      MagiC finds <code>C:\\MAGX.INF</code>.</p>
+    `,
+  },
+
+  install: {
+    title: 'Using the ROM',
+    html: `
+      <h4>SidecarTridge TOS Emulator</h4>
+      <p>Copy the <code>.img</code> file to the emulator's USB drive and select it as you would any TOS image.
+      MagiC needs the 256&nbsp;KB ROM space at <code>$E00000</code>: STE and Mega STE have it, an ST or
+      Mega ST needs the <a href="https://sidecartridge.com/products/sidecartridge-256kb-decoder-atari-st/" target="_blank" rel="noopener">SidecarTridge 256&nbsp;KB Decoder</a>.</p>
+      <h4>Floppy</h4>
+      <p>Insert the boot floppy in drive A: and switch on. MagiC reads <code>A:\\MAGX.INF</code> and starts
+      its desktop from <code>A:\\GEMSYS\\GEMDESK</code>.</p>
+      <h4>Hard disk</h4>
+      <p>Unpack the ZIP to the root of <code>C:</code>, keeping its folders. A boot from the hard disk driver
+      (AHDI, ICD, HDDRIVER...) then starts MagiC from <code>C:</code>. The accessories in
+      <code>C:\\AUTO\\ACCS</code> include a clock panel that asks for the date on machines without a clock.</p>
+      <h4>Hatari</h4>
+      <p>Select the <code>.img</code> as TOS image (machine STE, fast boot off) and the floppy as drive A:.
+      Hatari's GEMDOS drive does not boot, so use the floppy target, or an ACSI image with a driver for the
+      hard disk target.</p>
+    `,
+  },
+};
+
+// ----- ui.js -----
+// MagiC ROM Builder UI: the four-step accordion (release, options, build,
+// download). src/package.js does the work; this file is DOM glue.
+
+
+
+
+const BUNDLED_RELEASE = 'assets/Atari-MagiC-2026-10-17.zip';
+
+const INSTALL_HINTS = {
+  floppy: 'Select the .img in the TOS Emulator (or as TOS in Hatari, machine STE) and boot with the .st floppy in drive A:.',
+  harddisk: 'Select the .img in the TOS Emulator and unpack the ZIP to the root of your boot drive C:.',
+};
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', initUi);
+}
+
+function initUi() {
+  if (!featureCheck()) return;
+  const state = {
+    source: 'bundled',
+    upload: null,       // { name, bytes }
+    outputs: null,      // [{ name, data, kind }]
+    blobUrls: [],
+    building: false,
+  };
+  document.getElementById('bundledName').textContent = BUNDLED_RELEASE.split('/').pop();
+  wireStep1(state);
+  wireStep2(state);
+  document.getElementById('buildBtn').addEventListener('click', () => doBuild(state));
+  document.getElementById('resetBtn').addEventListener('click', () => invalidateBuild(state, true));
+  wireLogToggle();
+  wireHelpModal();
+  refresh(state);
+}
+
+function featureCheck() {
+  const ok = typeof File !== 'undefined' && typeof Blob !== 'undefined'
+    && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function'
+    && typeof DecompressionStream !== 'undefined';
+  if (!ok) document.getElementById('browserWarning').style.display = 'block';
+  return ok;
+}
+
+// ----- help modal -----
+
+function wireHelpModal() {
+  const dialog = document.getElementById('helpModal');
+  dialog.querySelector('.modal-close').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+  document.getElementById('app').addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.help-icon[data-help-key]');
+    if (!btn) return;
+    const entry = HELP_CONTENT[btn.dataset.helpKey];
+    if (!entry) return;
+    document.getElementById('helpModalTitle').textContent = entry.title;
+    document.getElementById('helpModalBody').innerHTML = entry.html;
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+  });
+}
+
+// ----- Step 1: release source -----
+
+function wireStep1(state) {
+  for (const radio of document.querySelectorAll('input[name="source"]')) {
+    radio.addEventListener('change', () => {
+      state.source = radio.value;
+      invalidateBuild(state, false);
+      refresh(state);
+    });
+  }
+  const drop = document.getElementById('dropZone');
+  const input = document.getElementById('fileInput');
+  input.addEventListener('change', () => {
+    if (input.files.length) takeUpload(state, input.files[0]);
+    input.value = '';
+  });
+  drop.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    drop.classList.add('drag-active');
+  });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag-active'));
+  drop.addEventListener('drop', (e) => {
+    e.preventDefault();
+    drop.classList.remove('drag-active');
+    if (e.dataTransfer.files.length) takeUpload(state, e.dataTransfer.files[0]);
+  });
+}
+
+async function takeUpload(state, file) {
+  state.upload = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
+  invalidateBuild(state, false);
+  refresh(state);
+}
+
+// ----- Step 2: options -----
+
+function wireStep2(state) {
+  for (const radio of document.querySelectorAll('input[name="lang"], input[name="target"]')) {
+    radio.addEventListener('change', () => {
+      invalidateBuild(state, false);
+      refresh(state);
+    });
+  }
+}
+
+function selected(name) {
+  return document.querySelector(`input[name="${name}"]:checked`).value;
+}
+
+// ----- Step 3: build -----
+
+async function releaseBytes(state, t0) {
+  if (state.source === 'upload') {
+    appendLog({ kind: 'info', text: `Using ${state.upload.name} (${state.upload.bytes.length.toLocaleString('en-US')} bytes) from your computer.`, at: performance.now() - t0 });
+    return state.upload.bytes;
+  }
+  appendLog({ kind: 'info', text: `Fetching the bundled release ${BUNDLED_RELEASE}...`, at: performance.now() - t0 });
+  const resp = await fetch(BUNDLED_RELEASE);
+  if (!resp.ok) throw new Error(`Could not fetch the bundled release (HTTP ${resp.status}).`);
+  const bytes = new Uint8Array(await resp.arrayBuffer());
+  appendLog({ kind: 'info', text: `Fetched ${bytes.length.toLocaleString('en-US')} bytes.`, at: performance.now() - t0 });
+  return bytes;
+}
+
+async function doBuild(state) {
+  clearLog();
+  setProgress(0);
+  state.building = true;
+  refresh(state);
+  const lang = selected('lang');
+  const target = selected('target');
+  const t0 = performance.now();
+  try {
+    const bytes = await releaseBytes(state, t0);
+    setProgress(30);
+    let steps = 0;
+    const log = (entry) => {
+      appendLog(entry);
+      if (entry.kind === 'step') setProgress(Math.min(95, 30 + 6 * ++steps));
+    };
+    const result = await buildPackage(bytes, { lang, target, stub: ROMBOOT, log, t0 });
+    state.outputs = result.outputs;
+    setProgress(100);
+    showDownloads(state, target);
+  } catch (err) {
+    appendLog({ kind: 'error', text: `Build failed: ${err.message}`, at: performance.now() - t0 });
+    state.outputs = null;
+    setProgress(0);
+  }
+  state.building = false;
+  refresh(state);
+}
+
+function clearLog() {
+  document.getElementById('log').textContent = '';
+}
+
+function appendLog(entry) {
+  const log = document.getElementById('log');
+  log.insertAdjacentHTML('beforeend', formatLogHtml(entry));
+  log.scrollTop = log.scrollHeight;
+}
+
+function setProgress(pct) {
+  document.getElementById('prog').value = pct;
+  document.getElementById('progLabel').textContent = `${pct}%`;
+}
+
+// ----- Step 4: downloads -----
+
+const KIND_LABEL = {
+  rom: 'ROM image',
+  floppy: 'Boot floppy (720 KB .ST)',
+  zip: 'Files for drive C: (ZIP)',
+};
+
+function showDownloads(state, target) {
+  const box = document.getElementById('downloads');
+  box.textContent = '';
+  for (const out of state.outputs) {
+    const url = URL.createObjectURL(new Blob([out.data], { type: 'application/octet-stream' }));
+    state.blobUrls.push(url);
+    const row = document.createElement('div');
+    row.style.margin = '6px 0';
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = out.name;
+    link.textContent = `Download ${out.name}`;
+    link.style.cssText = 'display:inline-block; padding:8px 14px; border-radius:6px; background:#fde047; color:#111827; font-weight:600; text-decoration:none;';
+    const label = document.createElement('span');
+    label.className = 'hint';
+    label.style.marginLeft = '12px';
+    label.textContent = `${KIND_LABEL[out.kind]}, ${out.data.length.toLocaleString()} bytes`;
+    row.append(link, label);
+    box.append(row);
+  }
+  document.getElementById('installHint').textContent = INSTALL_HINTS[target];
+}
+
+function invalidateBuild(state, clear) {
+  for (const url of state.blobUrls) URL.revokeObjectURL(url);
+  state.blobUrls = [];
+  state.outputs = null;
+  document.getElementById('downloads').textContent = '';
+  document.getElementById('installHint').textContent = '';
+  setProgress(0);
+  if (clear) clearLog();
+  refresh(state);
+}
+
+// ----- log pane toggle -----
+
+function wireLogToggle() {
+  const btn = document.getElementById('toggleLog');
+  const log = document.getElementById('log');
+  btn.addEventListener('click', () => {
+    const showing = log.style.display !== 'none';
+    log.style.display = showing ? 'none' : '';
+    btn.textContent = showing ? 'Show process output' : 'Hide process output';
+  });
+}
+
+// ----- step gating -----
+
+function refresh(state) {
+  const haveRelease = state.source === 'bundled' || state.upload !== null;
+  const built = state.outputs !== null;
+  document.getElementById('dropZone').style.display = state.source === 'upload' ? '' : 'none';
+  document.getElementById('step1Hint').textContent = state.source === 'bundled'
+    ? 'Uses the release bundled with this page.'
+    : (state.upload ? `Loaded ${state.upload.name} (${state.upload.bytes.length.toLocaleString()} bytes).` : 'No release loaded yet.');
+  setStep('step1', haveRelease ? 'complete' : 'active');
+  setStep('step2', haveRelease ? 'complete' : 'pending');
+  setStep('step3', !haveRelease ? 'pending' : (built ? 'complete' : 'active'));
+  setStep('step4', built ? 'active' : 'pending');
+  document.getElementById('buildBtn').disabled = !haveRelease || built || state.building;
+}
+
+function setStep(id, mode) {
+  const li = document.getElementById(id);
+  li.classList.remove('active', 'complete');
+  if (mode === 'active' || mode === 'complete') li.classList.add(mode);
+  li.querySelector('.step-status').textContent =
+    mode === 'active' ? 'Ready' : mode === 'complete' ? 'Done' : 'Pending';
+}
+</script>
+
+</body>
+</html>

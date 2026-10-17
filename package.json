@@ -1,0 +1,18 @@
+{
+  "name": "magic-c-builder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser tool that turns a MagiC for Atari release into a 256 KB ROM image plus its boot floppy or hard disk files.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test 'tests/*.test.mjs'",
+    "stub": "STCMD_NO_TTY=1 STCMD_QUIET=1 stcmd vasmm68k_mot -quiet -Fbin -m68000 -no-opt -o src/stubs/romboot.bin stub/romboot.s",
+    "mkall": "node tools/mkall.mjs",
+    "browser-check": "node tools/browser_check.mjs",
+    "consent-check": "node tools/consent_check.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
