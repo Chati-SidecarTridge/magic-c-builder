@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MagiC ROM Builder · SidecarTridge</title>
+<link rel="canonical" href="https://magic.sidecartridge.com/">
+<meta name="description" content="Build a MagiC 6.30 ROM image for the Atari ST, STE and Mega STE that boots in place of TOS, plus its boot floppy or hard disk files. For the SidecarTridge TOS Emulator and Hatari.">
+<style>
+{{STYLES}}
+</style>
+<script>
+window.addEventListener('error', function (e) {
+  var w = document.getElementById('browserWarning');
+  if (w) {
+    w.style.display = 'block';
+    w.textContent = 'The MagiC ROM Builder hit a startup error: ' + (e.message || 'unknown');
+  }
+});
+</script>
+{{CONSENT}}
+</head>
+
+<body class="c_darkmode">
+
+<nav class="top-banner">
+  <a class="brand-link" href="https://sidecartridge.com" target="_blank" rel="noopener">
+    <img class="brand-mark" src="https://sidecartridge.com/assets/images/logo/logo.png" alt="SidecarTridge logo mark">
+    <img class="brand-wordmark" src="https://sidecartridge.com/assets/images/logo/logo-text.png" alt="SidecarTridge">
+  </a>
+  <a href="https://sidecartridge.com" id="backLink" class="back-link">&#8592; Back</a>
+</nav>
+
+<div id="browserWarning" style="display:none; padding:12px; background:#7f1d1d; border-radius:6px; margin-bottom:16px;">
+  Your browser lacks the File, Blob or DecompressionStream APIs this page needs. Please use a recent version of Chrome, Firefox, or Safari.
+</div>
+
+<div id="app">
+  <h2>MagiC ROM Builder</h2>
+  <p style="margin-top:6px; color:#cbd5f5;">
+    Turn Andreas Kromke's MagiC for Atari into a 256&nbsp;KB ROM image that boots in place of TOS, plus the
+    boot floppy or hard disk files it loads its desktop from. The ROM runs at <code>$E00000</code>: in the
+    <a href="https://sidecartridge.com/products/sidecartridge-tos-atari-st/" target="_blank" rel="noopener" style="color:#fde047;">SidecarTridge TOS Emulator</a>
+    on an STE or Mega STE, on an ST or Mega ST with the
+    <a href="https://sidecartridge.com/products/sidecartridge-256kb-decoder-atari-st/" target="_blank" rel="noopener" style="color:#fde047;">SidecarTridge 256&nbsp;KB Decoder</a>, or in Hatari.
+    Everything is built in your browser.
+  </p>
+
+  <section class="about">
+    <div class="about-card">
+      <h3>What is MagiC?</h3>
+      <p>
+        MagiC is an alternative operating system for the Atari ST family, written by Andreas Kromke. It started
+        in 1990 as Mag!X and replaces TOS with a <strong>multitasking</strong> system: several GEM programs run at
+        the same time, each in its own windows, while it stays compatible with the software written for TOS.
+      </p>
+      <ul>
+        <li>Multitasking AES with a modern window manager, and the <strong>MAGXDESK</strong> desktop.</li>
+        <li><strong>MVDI</strong>, the fast graphics library by Sven and Wilfried Behne, with loadable screen drivers.</li>
+        <li>Long file names (VFAT), shared libraries, the <strong>MCMD</strong> command line and a set of small tools.</li>
+      </ul>
+      <p>
+        It was sold commercially for Atari computers, and later as MagiC Mac and MagiC PC for other machines. In
+        2018 Kromke published the complete sources under the GPLv3, and in 2026 he released
+        <strong>MagiC 6.30</strong> for Atari computers: the version this page builds.
+      </p>
+    </div>
+    <div class="about-card">
+      <h3>Why a ROM?</h3>
+      <p>
+        MagiC normally ships as a program: TOS boots first, then <code>AUTO\MAGXBOOT</code> loads the kernel
+        (<code>MAGIC.RAM</code>) from disk into RAM and hands the machine over. In ROM, MagiC <em>is</em> the operating
+        system from the moment you switch on:
+      </p>
+      <ul>
+        <li><strong>No TOS needed</strong>, and no loader in the AUTO folder.</li>
+        <li><strong>About 240&nbsp;KB more free RAM</strong>: the kernel runs in place from ROM instead of being copied
+          into memory. On a 1&nbsp;MB ST that is almost a quarter of the machine.</li>
+        <li><strong>Faster boot</strong>: the kernel is not read from floppy or hard disk on every start.</li>
+        <li><strong>One click to switch</strong>: with the SidecarTridge TOS Emulator, choose the MagiC image or a TOS
+          image from the same device.</li>
+      </ul>
+      <p class="hint">
+        The ROM still loads its screen drivers and desktop from a disk, so this page also builds the boot floppy or
+        the hard disk files that go with it.
+      </p>
+    </div>
+  </section>
+
+  <ul class="steps" id="steps">
+
+    <li id="step1" class="step active">
+      <div class="step-header"><span>Step 1/4. MagiC release <button type="button" class="help-icon" data-help-key="release" aria-label="Help: MagiC release" title="MagiC release">?</button></span> <span class="step-status">Ready</span></div>
+      <div class="step-content">
+        <div class="options-grid">
+          <fieldset style="grid-column: 1 / -1;">
+            <legend>Source</legend>
+            <label><input type="radio" name="source" value="bundled" checked> Bundled release <code id="bundledName"></code></label>
+            <label><input type="radio" name="source" value="upload"> My own <code>Atari-MagiC-*.zip</code></label>
+          </fieldset>
+        </div>
+        <div id="dropZone" class="drop-zone" style="display:none; margin-top:10px;">
+          Drag and drop an <code>Atari-MagiC-*.zip</code> release here, or
+          <label for="fileInput" class="browse-link">browse</label>.
+          <input type="file" id="fileInput" accept=".zip,application/zip" style="display:none">
+        </div>
+        <div id="step1Hint" class="hint" style="margin-top:8px;"></div>
+      </div>
+    </li>
+
+    <li id="step2" class="step">
+      <div class="step-header"><span>Step 2/4. Options <button type="button" class="help-icon" data-help-key="options" aria-label="Help: Options" title="Options">?</button></span> <span class="step-status">Pending</span></div>
+      <div class="step-content">
+        <div class="options-grid">
+          <fieldset>
+            <legend>Language</legend>
+            <label><input type="radio" name="lang" value="EN" checked> English</label>
+            <label><input type="radio" name="lang" value="DE"> Deutsch</label>
+            <label><input type="radio" name="lang" value="FR"> Fran&ccedil;ais</label>
+          </fieldset>
+          <fieldset>
+            <legend>Boot from <button type="button" class="help-icon" data-help-key="target" aria-label="Help: Boot from" title="Boot from">?</button></legend>
+            <label><input type="radio" name="target" value="floppy" checked> Floppy, system on <code>A:</code></label>
+            <label><input type="radio" name="target" value="harddisk"> Hard disk, system on <code>C:</code></label>
+          </fieldset>
+        </div>
+      </div>
+    </li>
+
+    <li id="step3" class="step">
+      <div class="step-header">Step 3/4. Build <span class="step-status">Pending</span></div>
+      <div class="step-content">
+        <p>Click <strong>Build</strong>. The log below shows what goes into the ROM and the boot files.</p>
+        <button id="buildBtn" type="button" disabled>Build</button>
+      </div>
+    </li>
+
+    <li id="step4" class="step">
+      <div class="step-header"><span>Step 4/4. Download <button type="button" class="help-icon" data-help-key="install" aria-label="Help: Install" title="Install">?</button></span> <span class="step-status">Pending</span></div>
+      <div class="step-content">
+        <div id="downloads"></div>
+        <div id="installHint" class="hint" style="margin-top:10px;"></div>
+        <button id="resetBtn" type="button" style="margin-top:12px; background:#1f2937; color:#f9fafb;">Build another</button>
+      </div>
+    </li>
+
+  </ul>
+
+  <div class="progress-wrap">
+    <progress id="prog" value="0" max="100"></progress>
+    <div id="progLabel" class="progress-label">0%</div>
+  </div>
+
+  <div style="margin:10px 0 6px; color:#cbd5f5; display:flex; align-items:center; gap:8px;">
+    <button id="toggleLog" type="button" style="background:#1f2937; color:#f9fafb;">Hide process output</button>
+  </div>
+  <div id="log" class="log" role="log" aria-live="polite"></div>
+
+</div>
+
+<footer class="credits">
+  <div class="credits-inner">
+    <h3>Built on the work of</h3>
+    <div class="credits-grid">
+      <section>
+        <h4>MagiC</h4>
+        <ul>
+          <li><a href="https://gitlab.com/AndreasK/Atari-Mac-MagiC-Sources" target="_blank" rel="noopener">Atari-Mac-MagiC-Sources</a>: MagiC for Atari by Andreas Kromke, sources and the <code>Atari-MagiC</code> releases (GPLv3). The bundled release is unmodified.</li>
+          <li><a href="https://gitlab.com/AndreasK/magiclinux" target="_blank" rel="noopener">MagicOnLinux</a>: where the release's kernels and root file system are built.</li>
+          <li><a href="https://www.atariuptodate.de/de/3770/magicrom" target="_blank" rel="noopener">MAGICROM</a> by Wilfried Mintrop (1996): the original MagiC to ROM converter, studied to understand the ROM layout.</li>
+        </ul>
+      </section>
+      <section>
+        <h4>Built with</h4>
+        <ul>
+          <li><a href="https://github.com/emutos/emutos" target="_blank" rel="noopener">EmuTOS</a>: the ST/STE memory detection in the boot stub is adapted from its <code>memory.S</code> (GPL v2 or later).</li>
+          <li><a href="http://sun.hasenbraten.de/vasm/" target="_blank" rel="noopener">vasm</a> by Volker Barthelmann and Frank Wille: assembles the boot stub.</li>
+          <li><a href="https://github.com/sidecartridge/atarist-toolkit-docker" target="_blank" rel="noopener">atarist-toolkit-docker</a>: the Atari ST cross toolchain that runs vasm.</li>
+          <li><a href="https://github.com/sidecartridge/USM-web" target="_blank" rel="noopener">USM-web</a>: the single-page builder this tool follows.</li>
+        </ul>
+      </section>
+      <section>
+        <h4>Tested with</h4>
+        <ul>
+          <li><a href="https://www.hatari-emu.org/" target="_blank" rel="noopener">Hatari</a>: every ROM boots to the MagiC desktop on the emulated ST, Mega ST, STE and Mega STE, 512 KB to 4 MB (Hatari maps the ROM at <code>$E00000</code> on every model; a real ST or Mega ST needs the <a href="https://sidecartridge.com/products/sidecartridge-256kb-decoder-atari-st/" target="_blank" rel="noopener">256 KB decoder</a>).</li>
+          <li><a href="https://www.capstone-engine.org/" target="_blank" rel="noopener">Capstone</a>: 68000 disassembly while studying the kernel.</li>
+          <li><a href="https://www.gnu.org/software/mtools/" target="_blank" rel="noopener">GNU mtools</a>: checks of the floppy and hard disk images.</li>
+          <li>ICD AdSCSI Pro 6.5.5 driver: boots the hard disk test images.</li>
+        </ul>
+      </section>
+      <section>
+        <h4>Runs on</h4>
+        <ul>
+          <li><a href="https://sidecartridge.com/products/sidecartridge-tos-atari-st/" target="_blank" rel="noopener">SidecarTridge TOS Emulator</a>: the ROM emulator this image is made for.</li>
+          <li><a href="https://sidecartridge.com/products/sidecartridge-256kb-decoder-atari-st/" target="_blank" rel="noopener">SidecarTridge 256 KB Decoder</a>: maps the 256 KB ROM space at <code>$E00000</code> on an ST or Mega ST.</li>
+        </ul>
+      </section>
+    </div>
+    <p class="credits-license">
+      This builder and its boot stub are GPLv3:
+      <a href="https://github.com/sidecartridge/magic-c-builder" target="_blank" rel="noopener">github.com/sidecartridge/magic-c-builder</a>.
+      MagiC is &copy; Andreas Kromke, GPLv3.
+      <span class="credits-links">
+        <a href="#" data-cc="c-settings">Cookies</a> &middot;
+        <a href="https://sidecartridge.com/privacy-policy/" target="_blank" rel="noopener">Privacy policy</a>
+      </span>
+    </p>
+  </div>
+</footer>
+
+<dialog id="helpModal" aria-labelledby="helpModalTitle">
+  <div class="modal-panel">
+    <header class="modal-header">
+      <h3 id="helpModalTitle"></h3>
+      <button type="button" class="modal-close" aria-label="Close help">&times;</button>
+    </header>
+    <div id="helpModalBody" class="modal-body"></div>
+  </div>
+</dialog>
+
+<script type="module">
+{{SCRIPT}}
+</script>
+
+</body>
+</html>

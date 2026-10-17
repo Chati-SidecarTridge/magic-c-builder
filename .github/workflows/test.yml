@@ -1,0 +1,19 @@
+name: test
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build
+        run: npm run build
+      - name: Generated files are committed
+        run: git diff --exit-code index.html src/romboot-stub.js
+      - name: Unit tests
+        run: npm test
